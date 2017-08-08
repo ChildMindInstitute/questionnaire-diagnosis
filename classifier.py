@@ -125,28 +125,21 @@ def learn():
     # print(clf.predict(test_set[features]))
 
     # print(clf.predict_proba(test_set[features]))
-    # print(clf.predict_proba(test_set[features])[0][0])
-    # print(clf.predict_proba(test_set[features])[1][0])
 
     blank1.append(clf.predict_proba(test_set[features])[0][0])
     blank2.append(clf.predict_proba(test_set[features])[1][0])
+
+    # print(list(zip(training_set[features], clf.feature_importances_)))
 
 
 def mean(numbers):
     return float(sum(numbers)) / max(len(numbers), 1)
 
-# print(blank1)
-# print(blank2)
-#
-# print(mean(blank1))
-# print(mean(blank2))
-
 if __name__ == "__main__":
     for l in range(10):
         for i in range(50):
             learn()
-        print(mean(blank1))
-        print(mean(blank2))
+        print(mean(blank1), mean(blank2))
 
 
 
