@@ -90,7 +90,10 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
 
 blank1 = []
 blank2 =[]
@@ -114,32 +117,39 @@ def learn():
     features = df.columns[:7]
     # print(features)
 
-    clf = RandomForestClassifier(n_estimators=10)
+    rnd_clf = RandomForestClassifier(n_estimators=10)
+    log_clf = LogisticRegression()
+    svm_clf = SVC()
+
+    voting_clf = VotingClassifier(estimators=[('lr', log_clf),('rf',rnd_clf),('svc',svm_clf)], voting='hard')
 
     training_set = df[df['subset'] == 'train']
 
-    clf.fit(training_set[features], factorized[0][:-2])
+    voting_clf.fit(training_set[features], factorized[0][:-2])
 
     test_set = df[df['subset'] == 'test']
 
-    # print(clf.predict(test_set[features]))
+    print(voting_clf.predict(test_set[features]))
 
-    # print(clf.predict_proba(test_set[features]))
+    for clf in (log_clf, rnd_clf, svm_clf, voting_clf):
+        clf.fit(training_set[features], factorized[0][:-2])
+        y_pred = clf.predict(test_set[features])
+        print(clf.__class__.__name__, accuracy_score(y_pred, factorized[0][-2:]))
 
-    blank1.append(clf.predict_proba(test_set[features])[0][0])
-    blank2.append(clf.predict_proba(test_set[features])[1][0])
+    blank2.append(voting_clf.predict(test_set[features]))
 
     # print(list(zip(training_set[features], clf.feature_importances_)))
 
+learn()
 
-def mean(numbers):
-    return float(sum(numbers)) / max(len(numbers), 1)
-
-if __name__ == "__main__":
-    for l in range(10):
-        for i in range(50):
-            learn()
-        print(mean(blank1), mean(blank2))
+# def mean(numbers):
+#     return float(sum(numbers)) / max(len(numbers), 1)
+#
+# if __name__ == "__main__":
+#     for l in range(10):
+#         for i in range(50):
+#             learn()
+#         print((blank1), (blank2))
 
 
 
