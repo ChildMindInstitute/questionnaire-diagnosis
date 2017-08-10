@@ -95,10 +95,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
-blank1 = []
-blank2 =[]
-
 def learn():
+
+    # filename = 'DSM_Data.xlsx'
+    # sheetname = 'DSM_Data'
+    # output = pd.ExcelFile(filename)
+    # dataset = output.parse(sheetname)
+    # dataset = pd.DataFrame(data=dataset)
+    # dataset = dataset.set_index('EID')
+    # print(dataset)
 
     df = pd.DataFrame(data=np.array([[1,1,0,1,1,0,1],[0,0,1,0,0,1,0],[1,1,1,1,1,0,1],[1,0,0,1,1,0,0],
                                      [0,0,1,0,1,1,0],[0,1,0,1,1,0,1],[0,0,0,1,1,0,1],[1,0,1,0,0,1,0],
@@ -117,7 +122,7 @@ def learn():
     features = df.columns[:7]
     # print(features)
 
-    rnd_clf = RandomForestClassifier(n_estimators=10)
+    rnd_clf = RandomForestClassifier(n_estimators=10, random_state=0)
     log_clf = LogisticRegression()
     svm_clf = SVC()
 
@@ -126,32 +131,20 @@ def learn():
     training_set = df[df['subset'] == 'train']
 
     voting_clf.fit(training_set[features], factorized[0][:-2])
+    rnd_clf.fit(training_set[features], factorized[0][:-2])
 
     test_set = df[df['subset'] == 'test']
 
     print(voting_clf.predict(test_set[features]))
+    print(rnd_clf.predict(test_set[features]))
 
     for clf in (log_clf, rnd_clf, svm_clf, voting_clf):
         clf.fit(training_set[features], factorized[0][:-2])
         y_pred = clf.predict(test_set[features])
         print(clf.__class__.__name__, accuracy_score(y_pred, factorized[0][-2:]))
 
-    blank2.append(voting_clf.predict(test_set[features]))
+    print(rnd_clf.predict_proba(test_set[features]))
+    print(list(zip(training_set[features], rnd_clf.feature_importances_)))
 
-    # print(list(zip(training_set[features], clf.feature_importances_)))
-
-learn()
-
-# def mean(numbers):
-#     return float(sum(numbers)) / max(len(numbers), 1)
-#
-# if __name__ == "__main__":
-#     for l in range(10):
-#         for i in range(50):
-#             learn()
-#         print((blank1), (blank2))
-
-
-
-
-
+if __name__ == "__main__":
+    learn()
