@@ -97,14 +97,6 @@ from sklearn.metrics import accuracy_score
 
 def learn():
 
-    # filename = 'DSM_Data.xlsx'
-    # sheetname = 'DSM_Data'
-    # output = pd.ExcelFile(filename)
-    # dataset = output.parse(sheetname)
-    # dataset = pd.DataFrame(data=dataset)
-    # dataset = dataset.set_index('EID')
-    # print(dataset)
-
     df = pd.DataFrame(data=np.array([[1,1,0,1,1,0,1],[0,0,1,0,0,1,0],[1,1,1,1,1,0,1],[1,0,0,1,1,0,0],
                                      [0,0,1,0,1,1,0],[0,1,0,1,1,0,1],[0,0,0,1,1,0,1],[1,0,1,0,0,1,0],
                                      [1,1,0,0,1,0,1],[0,0,1,0,0,0,0]]),
@@ -146,5 +138,23 @@ def learn():
     print(rnd_clf.predict_proba(test_set[features]))
     print(list(zip(training_set[features], rnd_clf.feature_importances_)))
 
+def DSM():
+
+    filename = 'DSM_Data.xlsx'
+    sheetname = 'DSM_Data'
+    output = pd.ExcelFile(filename)
+    dataset = output.parse(sheetname)
+    dataset = pd.DataFrame(data=dataset)
+    dataset = dataset.set_index('EID')
+
+    dataset['train'] = np.zeros(len(dataset))
+    for number in range(len(dataset)):
+        if number < 15:
+            dataset['train'].iloc[number] = True
+        else:
+            dataset['train'].iloc[number] = False
+    print(dataset)
+
 if __name__ == "__main__":
     learn()
+    DSM()
