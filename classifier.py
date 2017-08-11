@@ -150,26 +150,28 @@ def DSM():
     df = df.replace('NA', np.NaN)
 
     for column in df:
-        if df[column].isnull().sum() > 100:
+        if df[column].isnull().sum() > round(.10 * df.shape[0], 0):
             df = df.drop(column, axis=1)
 
     droplist = []
 
     for num in range(df.shape[0]):
-        if df.isnull().sum(axis=1)[num] > 100:
+        if df.isnull().sum(axis=1)[num] > 50:
             droplist.append(int(num))
 
 
     df = df.drop(df.index[[droplist]])
 
-    print(df.isnull().sum(axis=1))
+    df = df.replace(np.NaN, 'NA')
 
-    df['train'] = np.zeros(len(df))
-    for number in range(len(df)):
-        if number < 15:
-            df['train'].iloc[number] = True
-        else:
-            df['train'].iloc[number] = False
+    # print(df.isnull().sum(axis=1))
+    print(df.shape)
+    np.random.seed(seed=0)
+    df['train'] = np.random.uniform(0, 1, len(df)) <= .10
+
+    writer = pd.ExcelWriter('DSM_NaN_Removed.xlsx')
+    df.to_excel(writer, 'DSM_Data')
+    writer.save()
 
 if __name__ == "__main__":
     DSM()
