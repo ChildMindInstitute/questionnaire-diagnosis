@@ -141,20 +141,35 @@ def learn():
 def DSM():
 
     filename = 'DSM_Data.xlsx'
-    sheetname = 'DSM_Data'
+    sheetname = 'DSM_Data.csv'
     output = pd.ExcelFile(filename)
-    dataset = output.parse(sheetname)
-    dataset = pd.DataFrame(data=dataset)
-    dataset = dataset.set_index('EID')
+    df = output.parse(sheetname)
+    df = pd.DataFrame(data=df)
+    df = df.set_index('EID')
 
-    dataset['train'] = np.zeros(len(dataset))
-    for number in range(len(dataset)):
+    df = df.replace('NA', np.NaN)
+
+    for column in df:
+        if df[column].isnull().sum() > 100:
+            df = df.drop(column, axis=1)
+
+    droplist = []
+
+    for num in range(df.shape[0]):
+        if df.isnull().sum(axis=1)[num] > 100:
+            droplist.append(int(num))
+
+
+    df = df.drop(df.index[[droplist]])
+
+    print(df.isnull().sum(axis=1))
+
+    df['train'] = np.zeros(len(df))
+    for number in range(len(df)):
         if number < 15:
-            dataset['train'].iloc[number] = True
+            df['train'].iloc[number] = True
         else:
-            dataset['train'].iloc[number] = False
-    print(dataset)
+            df['train'].iloc[number] = False
 
 if __name__ == "__main__":
-    learn()
     DSM()
