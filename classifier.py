@@ -147,11 +147,18 @@ def DSM():
     df = pd.DataFrame(data=df)
     df = df.set_index('EID')
 
+    df = df.drop(['START_DATE.y', 'Study.y', 'Site.y', 'Year.y', 'Days_Baseline.y',
+                  'Season.y'], axis=1)
+
     df = df.replace('NA', np.NaN)
+    mean_list = []
 
     for column in df:
         if df[column].isnull().sum() > round(.10 * df.shape[0], 0):
             df = df.drop(column, axis=1)
+
+    for column in df:
+        mean_list.append(df[column].mean())
 
     droplist = []
 
@@ -159,18 +166,25 @@ def DSM():
         if df.isnull().sum(axis=1)[num] > 50:
             droplist.append(int(num))
 
-
     df = df.drop(df.index[[droplist]])
+
+    # print(df.isnull().sum(axis=1))
 
     df = df.replace(np.NaN, 'NA')
 
-    # print(df.isnull().sum(axis=1))
     print(df.shape)
+
     np.random.seed(seed=0)
-    df['train'] = np.random.uniform(0, 1, len(df)) <= .10
+    df['train'] = np.random.uniform(0, 1, len(df)) <= .20
+    df_copy = df
+
+    for row in range(df.shape[0]):
+        for col in range(df.shape[1]):
+            if df.iloc[row, col] == 'NA':
+                df_copy.iloc[row, col] = mean_list[col]
 
     writer = pd.ExcelWriter('DSM_NaN_Removed.xlsx')
-    df.to_excel(writer, 'DSM_Data')
+    df_copy.to_excel(writer, 'DSM_Data')
     writer.save()
 
 if __name__ == "__main__":
