@@ -82,6 +82,18 @@ def DSM():
 
     dx = dx[col_keep]
 
+    # Remove EIDs that have no Dx (would just add noise, "No Diagnosis" classification is unhelpful)
+
+    EID_drop_list = []
+
+    for row in range(dx.shape[0]):
+        if dx.iloc[row, 1] == 'No Diagnosis Given':
+            EID_drop_list.append(int(row))
+
+    dx = dx.drop(dx.index[EID_drop_list])
+
+    print(dx.shape)
+
     # Create a dictionary containing codes and associated Dx
     code_dict = {}
 
@@ -90,6 +102,8 @@ def DSM():
             for row in range(dx.shape[0]):
                 if dx.iloc[row, col] not in code_dict.keys():
                     code_dict[dx.iloc[row, col]] = dx.iloc[row, col-1]
+
+    print(code_dict)
 
     # mean_list = []
     mode_list = []
@@ -111,7 +125,7 @@ def DSM():
         if df.isnull().sum(axis=1)[num] > 50:
             droplist.append(int(num))
 
-    df = df.drop(df.index[[droplist]])
+    df = df.drop(df.index[droplist])
 
     # print(df.isnull().sum(axis=1))
 
