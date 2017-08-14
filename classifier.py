@@ -4,7 +4,6 @@ from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
-import statistics
 from collections import Counter
 from itertools import groupby
 
@@ -87,12 +86,10 @@ def DSM():
     EID_drop_list = []
 
     for row in range(dx.shape[0]):
-        if dx.iloc[row, 1] == 'No Diagnosis Given':
+        if dx.iloc[row, 0] == 'No Diagnosis Given' or dx.iloc[row, 1] == 'No Diagnosis Given':
             EID_drop_list.append(int(row))
 
     dx = dx.drop(dx.index[EID_drop_list])
-
-    print(dx.shape)
 
     # Create a dictionary containing codes and associated Dx
     code_dict = {}
@@ -103,12 +100,45 @@ def DSM():
                 if dx.iloc[row, col] not in code_dict.keys():
                     code_dict[dx.iloc[row, col]] = dx.iloc[row, col-1]
 
-    print(code_dict)
+    # Create a dictionary where key = EID and values = diagnosis / diagnoses
+
+    EID_Dx_dict = {}
+
+    for row in range(dx.shape[0]):
+        Dx_EID_list = []
+        for col in range(dx.shape[1]):
+            if col % 2 == 1 and not isinstance(dx.iloc[row, col], float):
+                if 'F' in dx.iloc[row, col]:
+                    Dx_EID_list.append('F' + dx.iloc[row, col].split('F', 1)[1][:2])
+                elif 'Z' in dx.iloc[row, col]:
+                    Dx_EID_list.append('Z' + dx.iloc[row, col].split('Z', 1)[1][:2])
+                else:
+                    print('what')
+        EID_Dx_dict[dx.index.values[row]] = Dx_EID_list
+
+    print(EID_Dx_dict)
+
+    # Remove patients from DSM Data dataframe if they were removed from the Dx dataframe
+
+    # df['Dx'] = np.zeros(len(df))
+    # df_Dx_match = df
+    #
+    # for num in range(dx.shape[0]):
+    #     if df.index[num] in dx.index.values:
+    #         df_Dx_match['Dx'][num] =
+    #     else:
+    #         print('remove EID from df')
+    #
+    #
+    # df = df_Dx_match
+
+    # Assign the set of Dx to each EID, transferring information from Dx to DSM dataframe
+
+    # Remove questions / patients with missing data, replace other NaN with mode
 
     # mean_list = []
     mode_list = []
 
-    # Remove questions / patients with missing data, replace other NaN with mode
     for column in df:
         if df[column].isnull().sum() > round(.10 * df.shape[0], 0):
             df = df.drop(column, axis=1)
@@ -119,19 +149,17 @@ def DSM():
         modes = list(freqs)[0][0]
         mode_list.append(modes)
 
-    droplist = []
+    NaN_droplist = []
 
     for num in range(df.shape[0]):
         if df.isnull().sum(axis=1)[num] > 50:
-            droplist.append(int(num))
+            NaN_droplist.append(int(num))
 
-    df = df.drop(df.index[droplist])
+    df = df.drop(df.index[NaN_droplist])
 
-    # print(df.isnull().sum(axis=1))
+    # print(df.isnull().sum(axis=1)) # Display the number of NaN values for each EID
 
     df = df.replace(np.NaN, 'NA')
-
-    print(df.shape)
 
     np.random.seed(seed=0)
     df['train'] = np.random.uniform(0, 1, len(df)) <= .20
