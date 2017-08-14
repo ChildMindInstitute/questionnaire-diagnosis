@@ -122,9 +122,12 @@ def DSM():
 
     # Create a dictionary where key = EID and values = diagnosis / diagnoses
 
+    dict_duplicates_removed = {a: list(set(b)) for a, b in EID_Dx_dict.items()}
+
     print(code_dict)
     print(EID_Dx_dict)
     print(EID_Dx_dict['NDARGX583YNZ'])
+    print(dict_duplicates_removed['NDARGX583YNZ'])
 
     # Remove patients from DSM Data dataframe if they were removed from the Dx dataframe
 
