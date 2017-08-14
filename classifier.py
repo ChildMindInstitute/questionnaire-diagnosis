@@ -94,6 +94,9 @@ from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
+import statistics
+from collections import Counter
+from itertools import groupby
 
 def learn():
 
@@ -151,7 +154,9 @@ def DSM():
                   'Season.y'], axis=1)
 
     df = df.replace('NA', np.NaN)
+
     mean_list = []
+    mode_list = []
 
     for column in df:
         if df[column].isnull().sum() > round(.10 * df.shape[0], 0):
@@ -159,6 +164,16 @@ def DSM():
 
     for column in df:
         mean_list.append(df[column].mean())
+        freqs = groupby(Counter(column).most_common(), lambda x: x[1])
+        # print(list(freqs))
+        modes = list(freqs)[0][0]
+        # print(modes)
+        # print(modes)
+        mode_list.append(modes)
+        # print(modes)
+
+    # print('mean: ' + str(len(mean_list)))
+    # print('mode: ' + str(len(mode_list)))
 
     droplist = []
 
@@ -181,7 +196,8 @@ def DSM():
     for row in range(df.shape[0]):
         for col in range(df.shape[1]):
             if df.iloc[row, col] == 'NA':
-                df_copy.iloc[row, col] = mean_list[col]
+                # df_copy.iloc[row, col] = mean_list[col]
+                df_copy.iloc[row, col] = mode_list[col]
 
     writer = pd.ExcelWriter('DSM_NaN_Removed.xlsx')
     df_copy.to_excel(writer, 'DSM_Data')
