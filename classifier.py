@@ -77,7 +77,7 @@ def DSM():
 
     for num in range(1, 8):
         col_keep.append('DX_0' + str(num) + '_Cat')
-        col_keep.append('DX_0' + str(num))
+        col_keep.append('DX_0' + str(num) + '_Sub')
         col_keep.append('DX_0' + str(num) + '_Code')
 
     dx = dx[col_keep]
@@ -123,6 +123,8 @@ def DSM():
                     Dx_EID_list.append(dx.iloc[row, col-2])
 
         EID_Dx_dict[dx.index.values[row]] = Dx_EID_list
+
+    print(len(set(code_dict.values())))
 
     # Create a dictionary where key = EID and values = diagnosis / diagnoses
 
@@ -180,8 +182,6 @@ def DSM():
     np.random.seed(seed=0)
     df['train'] = np.random.uniform(0, 1, len(df)) <= .20
     df_copy = df
-
-    print(df)
 
     for row in range(df.shape[0]):
         for col in range(df.shape[1]):
