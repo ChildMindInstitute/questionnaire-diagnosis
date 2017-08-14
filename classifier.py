@@ -120,7 +120,7 @@ def DSM():
                                 row, col - 2]
 
                 else:
-                    Dx_EID_list.append(dx.iloc[row, col-1])
+                    Dx_EID_list.append(dx.iloc[row, col-2])
 
         EID_Dx_dict[dx.index.values[row]] = Dx_EID_list
 
@@ -128,26 +128,27 @@ def DSM():
 
     dict_duplicates_removed = {a: list(set(b)) for a, b in EID_Dx_dict.items()}
 
-    print(code_dict)
-    print(EID_Dx_dict)
-    print(EID_Dx_dict['NDARAV945MCQ'])
-    print(dict_duplicates_removed['NDARAK653RYE'])
+    # print(code_dict)
+    # print(EID_Dx_dict)
+    # print(EID_Dx_dict['NDARAV945MCQ'])
+    # print(dict_duplicates_removed['NDARAK653RYE'])
 
     # Remove patients from DSM Data dataframe if they were removed from the Dx dataframe
 
-    # df['Dx'] = np.zeros(len(df))
-    # df_Dx_match = df
-    #
-    # for num in range(dx.shape[0]):
-    #     if df.index[num] in dx.index.values:
-    #         df_Dx_match['Dx'][num] =
-    #     else:
-    #         print('remove EID from df')
-    #
-    #
-    # df = df_Dx_match
+    df['Dx'] = np.zeros(len(df))
+    df = df.astype('object')
+    df_Dx_match = df
 
-    # Assign the set of Dx to each EID, transferring information from Dx to DSM dataframe
+    No_EID_drop_list = []
+
+    for row in range(df.shape[0]):
+        if df.index[row] in dx.index.values:
+            print(str(df.index[row]))
+            df_Dx_match.loc[str(df.index[row]), 'Dx'] = list(EID_Dx_dict[str(df.index[row])])
+        else:
+            No_EID_drop_list.append(int(row))
+
+    df = df_Dx_match.drop(df_Dx_match.index[No_EID_drop_list])
 
     # Remove questions / patients with missing data, replace other NaN with mode
 
@@ -179,6 +180,8 @@ def DSM():
     np.random.seed(seed=0)
     df['train'] = np.random.uniform(0, 1, len(df)) <= .20
     df_copy = df
+
+    print(df)
 
     for row in range(df.shape[0]):
         for col in range(df.shape[1]):
