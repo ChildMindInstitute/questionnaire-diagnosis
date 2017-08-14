@@ -77,7 +77,7 @@ def DSM():
 
     for num in range(1, 8):
         col_keep.append('DX_0' + str(num) + '_Cat')
-        col_keep.append('DX_0' + str(num) + '_Sub')
+        col_keep.append('DX_0' + str(num))
         col_keep.append('DX_0' + str(num) + '_Code')
 
     dx = dx[col_keep]
@@ -104,20 +104,24 @@ def DSM():
                 if 'F' in dx.iloc[row, col]:
                     Dx_EID_list.append('F' + dx.iloc[row, col].split('F', 1)[1][:2])
                     if ('F' + dx.iloc[row, col].split('F', 1)[1][:2]) not in code_dict.keys():
-                        print('F' + dx.iloc[row, col].split('F', 1)[1][:2])
                         if dx.iloc[row, col-2] == 'Neurodevelopmental Disorders':
                             code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[row, col - 1]
                         else:
-                            code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[row, col - 2]
+                            code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[
+                                row, col - 2]
+
                 elif 'Z' in dx.iloc[row, col]:
                     Dx_EID_list.append('Z' + dx.iloc[row, col].split('Z', 1)[1][:2])
                     if ('Z' + dx.iloc[row, col].split('Z', 1)[1][:2]) not in code_dict.keys():
-                        if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
+                        if dx.iloc[row, col-2] == 'Neurodevelopmental Disorders':
                             code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[row, col - 1]
                         else:
-                            code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[row, col - 2]
+                            code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[
+                                row, col - 2]
+
                 else:
-                    print('what')
+                    Dx_EID_list.append(dx.iloc[row, col-1])
+
         EID_Dx_dict[dx.index.values[row]] = Dx_EID_list
 
     # Create a dictionary where key = EID and values = diagnosis / diagnoses
@@ -126,8 +130,8 @@ def DSM():
 
     print(code_dict)
     print(EID_Dx_dict)
-    print(EID_Dx_dict['NDARGX583YNZ'])
-    print(dict_duplicates_removed['NDARGX583YNZ'])
+    print(EID_Dx_dict['NDARAV945MCQ'])
+    print(dict_duplicates_removed['NDARAK653RYE'])
 
     # Remove patients from DSM Data dataframe if they were removed from the Dx dataframe
 
