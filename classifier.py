@@ -82,9 +82,17 @@ def DSM():
 
     dx = dx[col_keep]
 
+    # Create a dictionary containing codes and associated Dx
+    code_dict = {}
+
+    for col in range(dx.shape[1]):
+        if col % 2 == 1:
+            for row in range(dx.shape[0]):
+                if dx.iloc[row, col] not in code_dict.keys():
+                    code_dict[dx.iloc[row, col]] = dx.iloc[row, col-1]
+
     # mean_list = []
     mode_list = []
-
 
     # Remove questions / patients with missing data, replace other NaN with mode
     for column in df:
