@@ -1,13 +1,15 @@
-from keras.datasets import mnist
+# from keras.datasets import mnist
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.utils import np_utils
 from keras.layers.convolutional import Conv2D
 from keras.layers.convolutional import MaxPooling2D
+import pandas as pd
 from keras import backend as K
 from keras.optimizers import SGD
 K.set_image_dim_ordering('th')
+from sklearn import preprocessing
 
 ########################################################################################################################
 
@@ -88,41 +90,41 @@ K.set_image_dim_ordering('th')
 
 # Complex Convolutional Neural Network
 
-seed = 7
-np.random.seed(seed)
-# load data
-(X_train, y_train), (X_test, y_test) = mnist.load_data()
-# reshape to be [samples][pixels][width][height]
-X_train = X_train.reshape(X_train.shape[0], 1, 28, 28).astype('float32')
-X_test = X_test.reshape(X_test.shape[0], 1, 28, 28).astype('float32')
-# normalize inputs from 0-255 to 0-1
-X_train = X_train / 255
-X_test = X_test / 255
-# one hot encode outputs
-y_train = np_utils.to_categorical(y_train)
-y_test = np_utils.to_categorical(y_test)
-num_classes = y_test.shape[1]
-
-def larger_model():
-    # create model
-    model = Sequential()
-    model.add(Conv2D(30, (5, 5), input_shape=(1, 28, 28), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(15, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.2))
-    model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dense(50, activation='relu'))
-    model.add(Dense(num_classes, activation='softmax'))
-    # Compile model
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    return model
-
-model = larger_model()
-model.fit(X_train, y_train, epochs=10, batch_size=200)
-scores = model.evaluate(X_test, y_test, verbose=1)
-print("Large CNN Error: %.2f%%" % (100-scores[1]*100))
+# seed = 7
+# np.random.seed(seed)
+# # load data
+# (X_train, y_train), (X_test, y_test) = mnist.load_data()
+# # reshape to be [samples][pixels][width][height]
+# X_train = X_train.reshape(X_train.shape[0], 1, 28, 28).astype('float32')
+# X_test = X_test.reshape(X_test.shape[0], 1, 28, 28).astype('float32')
+# # normalize inputs from 0-255 to 0-1
+# X_train = X_train / 255
+# X_test = X_test / 255
+# # one hot encode outputs
+# y_train = np_utils.to_categorical(y_train)
+# y_test = np_utils.to_categorical(y_test)
+# num_classes = y_test.shape[1]
+#
+# def larger_model():
+#     # create model
+#     model = Sequential()
+#     model.add(Conv2D(30, (5, 5), input_shape=(1, 28, 28), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Conv2D(15, (3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.2))
+#     model.add(Flatten())
+#     model.add(Dense(128, activation='relu'))
+#     model.add(Dense(50, activation='relu'))
+#     model.add(Dense(num_classes, activation='softmax'))
+#     # Compile model
+#     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+#     return model
+#
+# model = larger_model()
+# model.fit(X_train, y_train, epochs=10, batch_size=200)
+# scores = model.evaluate(X_test, y_test, verbose=1)
+# print("Large CNN Error: %.2f%%" % (100-scores[1]*100))
 
 ########################################################################################################################
 
@@ -133,10 +135,25 @@ Dx_types = ['Number of different types of Dx']
 
 sgd = SGD(lr=0.01, decay=1e-6, momentum=.9, nesterov=True)
 
-df = ['Load Data Here']
+filename = 'DSM_NaN_Replaced.xlsx'
+sheetname = 'DSM_Data'
+output = pd.ExcelFile(filename)
+df = output.parse(sheetname)
+df = pd.DataFrame(data=df)
+print(df.shape)
+
+mlb = preprocessing.MultiLabelBinarizer()
+# bin = mlb.fit_transform(['Somatic Symptom and Related Disorders', 'Attention-Deficit/Hyperactivity Disorder', 'Specific Learning Disorder', 'Intellectual Disability', 'Substance Related and Addictive Disorders', 'Elimination Disorders', 'Sleep-Wake Disorders', 'Autism Spectrum Disorder', 'Disruptive, Impulse Control and Conduct Disorders', 'Anxiety Disorders', 'Schizophrenia Spectrum and other Psychotic Disorders', 'Motor Disorder', 'Depressive Disorders', 'Feeding and Eating Disorders', 'No Diagnosis Given', 'Gender Dysphoria', 'Bipolar and Related Disorders', 'Trauma and Stressor Related Disorders', 'Personality Disorders', 'Obsessive Compulsive and Related Disorders', 'Other Conditions That May Be a Focus of Clinical Attention', 'Communication Disorder'])
+bin = mlb.fit_transform(df['Dx'])
+print(bin)
+print(len(bin))
+
+df['labelled'] = list(bin)
 
 training_set = df[df['train'] == True]
 testing_set = df[df['train'] == False]
+
+print(training_set)
 
 tr_array = training_set.values
 te_array = testing_set.values
@@ -144,23 +161,23 @@ te_array = testing_set.values
 row = ['Index of column that contains last feature']
 
 tr_inputs = tr_array[:, 0:-1]
-tr_outputs = tr_array[:, :-1]
 te_inputs = te_array[:, 0:-1]
+tr_outputs = tr_array[:, :-1]
 te_outputs = te_array[:, :-1]
 
-def HBN_model():
-    model = Sequential()
-    model.add(Dense(num_col, activation='relu', input_shape=num_col))
-    model.add(Dense(round(num_col), activation='relu'))
-    model.add(Dropout(.1))
-    model.add(Dense(Dx_types, activation='sigmoid'))
-    # model.compile(loss='binary_crossentropy', optimizer=sgd)
-    model.compile(loss='binary_crossentropy', optimizer='adam')
-
-model = HBN_model()
-model.fit(tr_inputs, tr_outputs, epochs=10, batch_size=50)
-preds = model.predict(te_inputs)
-preds[preds >= .5] = 1
-preds[preds < 0.5] = 0
+# def HBN_model():
+#     model = Sequential()
+#     model.add(Dense(num_col, activation='relu', input_shape=num_col))
+#     model.add(Dense(round(num_col), activation='relu'))
+#     model.add(Dropout(.1))
+#     model.add(Dense(Dx_types, activation='sigmoid'))
+#     # model.compile(loss='binary_crossentropy', optimizer=sgd)
+#     model.compile(loss='binary_crossentropy', optimizer='adam')
+#
+# model = HBN_model()
+# model.fit(tr_inputs, tr_outputs, epochs=10, batch_size=50)
+# preds = model.predict(te_inputs)
+# preds[preds >= .5] = 1
+# preds[preds < 0.5] = 0
 
 # Compare output of predictions in 'preds' and targets in 'test_target'
