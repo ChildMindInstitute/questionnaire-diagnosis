@@ -5,8 +5,9 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import MultiLabelBinarizer
 
-def RF():
+def learn():
 
     # Manually created simulated data for personal learning -- should be automated for training/testing
     df = pd.DataFrame(data=np.array([[1,1,0,1,1,0,1],[0,0,1,0,0,1,0],[1,1,1,1,1,0,1],[1,0,0,1,1,0,0],
@@ -60,3 +61,27 @@ def RF():
 
     # Print feature importance
     print(list(zip(train_set[features], rnd_clf.feature_importances_)))
+
+
+def RF():
+
+    filename = 'DSM_NaN_Replaced.xlsx'
+    sheetname = 'DSM_Data'
+    output = pd.ExcelFile(filename)
+    df = output.parse(sheetname)
+    df = pd.DataFrame(data=df)
+    df = df.set_index('EID')
+
+    train_set = df[df['train'] == True]
+    test_set = df[df['train'] == False]
+
+    train_targets = train_set['Dx']
+    test_targets = test_set['Dx']
+
+    print(df.head())
+
+    mlb = MultiLabelBinarizer()
+    Y = mlb.fit_transform(train_targets)
+
+if __name__ == '__main__':
+    RF()
