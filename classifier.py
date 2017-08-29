@@ -2,14 +2,12 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, VotingClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
 from collections import Counter
 from itertools import groupby
 
+
 def get_responses():
+
     # Load Patient DSM Data
     filename = 'DSM_Data.xlsx'
     sheetname = 'DSM_Data.csv'
@@ -20,7 +18,9 @@ def get_responses():
     df = df.drop(['START_DATE.y', 'Study.y', 'Site.y', 'Year.y', 'Days_Baseline.y',
                   'Season.y'], axis=1)
     df = df.replace('NA', np.NaN)
+
     return df
+
 
 def get_Dx():
 
@@ -39,7 +39,9 @@ def get_Dx():
         col_keep.append('DX_0' + str(num) + '_Sub')
         col_keep.append('DX_0' + str(num) + '_Code')
     dx = dx[col_keep]
+
     return dx
+
 
 def pair_diagnoses(df, dx):
 
@@ -47,7 +49,6 @@ def pair_diagnoses(df, dx):
     code_dict = {}
     EID_Dx_dict = {}
 
-    # for col in range(dx.shape[1]):
     for row in range(dx.shape[0]):
         Dx_EID_list = []
         for col in range(dx.shape[1]):
@@ -92,9 +93,6 @@ def pair_diagnoses(df, dx):
 
         EID_Dx_dict[dx.index.values[row]] = set(Dx_EID_list)
 
-    print(code_dict)
-    print(set(code_dict.values()))
-
     dict_duplicates_removed = {a: list(set(b)) for a, b in EID_Dx_dict.items()}
 
     # Remove patients from DSM Data dataframe if they were removed from the Dx dataframe
@@ -107,7 +105,6 @@ def pair_diagnoses(df, dx):
 
     for row in range(df.shape[0]):
         if df.index[row] in dx.index.values:
-            # print(str(df.index[row]))
             df_Dx_match.loc[str(df.index[row]), 'Dx'] = list(EID_Dx_dict[str(df.index[row])])
         else:
             No_EID_drop_list.append(int(row))
@@ -116,6 +113,7 @@ def pair_diagnoses(df, dx):
     df = df_Dx_match.drop(df_Dx_match.index[No_EID_drop_list])
 
     return df
+
 
 def feature_trim(df):
 
@@ -148,21 +146,19 @@ def feature_trim(df):
     df['train'] = np.random.uniform(0, 1, len(df)) <= .30
     df_copy = df
 
-    # Create MultiLabel Classifier and segment dataset for training/testing
-
-    training_set = df[df['train'] == True]
-    testing_set = df[df['train'] == False]
+    # Replace missing values with the mode of each feature
 
     for row in range(df.shape[0]):
         for col in range(df.shape[1]):
             if df.iloc[row, col] == 'NA':
-                # df_copy.iloc[row, col] = mean_list[col]
                 df_copy.iloc[row, col] = mode_list[col]
 
     for row in range(df.shape[0]):
         for col in range(df.shape[1]):
             if df.iloc[row, col] == 'NA':
                 df_copy.iloc[row, col] = mode_list[col]
+
+    # Save to excel
 
     writer = pd.ExcelWriter('DSM_NaN_Replaced.xlsx')
     df_copy.to_excel(writer, 'DSM_Data')
