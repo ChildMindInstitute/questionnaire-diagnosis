@@ -1,3 +1,5 @@
+# This script is intended to implement neural networks to the HBN dataset
+
 # from keras.datasets import mnist
 import numpy as np
 from keras.models import Sequential
@@ -10,6 +12,7 @@ from keras import backend as K
 from keras.optimizers import SGD
 K.set_image_dim_ordering('th')
 from sklearn import preprocessing
+import keras
 
 ########################################################################################################################
 
@@ -130,9 +133,6 @@ from sklearn import preprocessing
 
 # Build simple neural network for HBN dataset with one hidden layer
 
-num_col = ['Number of features in HBN data set after Dimensionality Reduction']
-Dx_types = ['Number of different types of Dx']
-
 sgd = SGD(lr=0.01, decay=1e-6, momentum=.9, nesterov=True)
 
 filename = 'DSM_NaN_Replaced.xlsx'
@@ -140,44 +140,54 @@ sheetname = 'DSM_Data'
 output = pd.ExcelFile(filename)
 df = output.parse(sheetname)
 df = pd.DataFrame(data=df)
-print(df.shape)
 
 mlb = preprocessing.MultiLabelBinarizer()
 # bin = mlb.fit_transform(['Somatic Symptom and Related Disorders', 'Attention-Deficit/Hyperactivity Disorder', 'Specific Learning Disorder', 'Intellectual Disability', 'Substance Related and Addictive Disorders', 'Elimination Disorders', 'Sleep-Wake Disorders', 'Autism Spectrum Disorder', 'Disruptive, Impulse Control and Conduct Disorders', 'Anxiety Disorders', 'Schizophrenia Spectrum and other Psychotic Disorders', 'Motor Disorder', 'Depressive Disorders', 'Feeding and Eating Disorders', 'No Diagnosis Given', 'Gender Dysphoria', 'Bipolar and Related Disorders', 'Trauma and Stressor Related Disorders', 'Personality Disorders', 'Obsessive Compulsive and Related Disorders', 'Other Conditions That May Be a Focus of Clinical Attention', 'Communication Disorder'])
 bin = mlb.fit_transform(df['Dx'])
-print(bin)
-print(len(bin))
+
+print(np.array(df['Dx']))
+
+sample = np.array(df['Dx'])
+sample = mlb.fit_transform(sample)
+print(sample[0])
 
 df['labelled'] = list(bin)
 
-training_set = df[df['train'] == True]
-testing_set = df[df['train'] == False]
+num_col = df.shape[1] - 4
+num_row = df.shape[0]
+Dx_types = ['Number of different types of Dx']
 
-print(training_set)
+train_set = df[df['train'] == True]
+test_set = df[df['train'] == False]
 
-tr_array = training_set.values
-te_array = testing_set.values
+tr_array = train_set.values
+te_array = test_set.values
 
 row = ['Index of column that contains last feature']
 
-tr_inputs = tr_array[:, 0:-1]
-te_inputs = te_array[:, 0:-1]
-tr_outputs = tr_array[:, :-1]
-te_outputs = te_array[:, :-1]
+tr_inputs = tr_array[:, 1:-3]
+te_inputs = te_array[:, 1:-3]
+tr_outputs = tr_array[:, -1:]
+te_outputs = te_array[:, -1:]
 
-# def HBN_model():
-#     model = Sequential()
-#     model.add(Dense(num_col, activation='relu', input_shape=num_col))
-#     model.add(Dense(round(num_col), activation='relu'))
-#     model.add(Dropout(.1))
-#     model.add(Dense(Dx_types, activation='sigmoid'))
-#     # model.compile(loss='binary_crossentropy', optimizer=sgd)
-#     model.compile(loss='binary_crossentropy', optimizer='adam')
-#
-# model = HBN_model()
-# model.fit(tr_inputs, tr_outputs, epochs=10, batch_size=50)
-# preds = model.predict(te_inputs)
-# preds[preds >= .5] = 1
-# preds[preds < 0.5] = 0
+tr_row = tr_array.shape[0]
+print(tr_inputs.shape)
+print(tr_outputs.shape)
+
+
+def HBN_model():
+    model = Sequential()
+    model.add(Dense(tr_row, input_shape=(num_col,), activation='relu'))
+    model.add(Dropout(.1))
+    model.add(Dense(len(bin), activation='sigmoid'))
+    # model.compile(loss='binary_crossentropy', optimizer=sgd)
+    model.compile(loss='binary_crossentropy', optimizer='adam')
+    return model
+
+model = HBN_model()
+model.fit(tr_inputs, tr_outputs, epochs=10, batch_size=50)
+preds = model.predict(te_inputs)
+preds[preds >= .5] = 1
+preds[preds < 0.5] = 0
 
 # Compare output of predictions in 'preds' and targets in 'test_target'
