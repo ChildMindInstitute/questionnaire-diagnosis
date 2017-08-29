@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MultiLabelBinarizer
+from ast import literal_eval
 
 def learn():
 
@@ -74,14 +75,18 @@ def RF():
 
     train_set = df[df['train'] == True]
     test_set = df[df['train'] == False]
+    train_targets = list(train_set['Dx'])
+    test_targets = list(test_set['Dx'])
+    for row in range(train_set.shape[0]):
+        train_targets[row] = literal_eval(train_targets[row])
 
-    train_targets = train_set['Dx']
-    test_targets = test_set['Dx']
-
-    print(df.head())
+    for row in range(test_set.shape[0]):
+        test_targets[row] = literal_eval(test_targets[row])
 
     mlb = MultiLabelBinarizer()
     Y = mlb.fit_transform(train_targets)
+
+    print(Y[0:5])
 
 if __name__ == '__main__':
     RF()
