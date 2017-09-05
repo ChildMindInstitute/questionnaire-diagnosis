@@ -7,6 +7,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MultiLabelBinarizer
 from ast import literal_eval
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.svm import LinearSVC
+from sklearn.multiclass import OneVsRestClassifier
 
 def learn():
 
@@ -18,15 +22,6 @@ def learn():
                       columns=['Q1','Q2','Q3','Q4','Q5','Q6','Q7'])
     df['Dx'] = ['ASD', 'SM', 'ASD', 'ASD', 'SM', 'ASD', 'ASD', 'SM', 'ASD', 'SM']
     df['subset'] = ['train', 'train', 'train', 'train', 'train', 'train', 'train', 'train', 'test', 'test']
-
-    filename = 'DSM_NaN_Replaced.xlsx'
-    sheetname = 'DSM_Data'
-    output = pd.ExcelFile(filename)
-    df = output.parse(sheetname)
-    df = pd.DataFrame(data=df)
-
-    df = df.apply(lambda x: pd['Dx'].factorize(x)[0])
-    print(df['Dx'])
 
     # Create array with Dx converted to a digit so that Dx is codified
     factorized = pd.factorize(df['Dx'])
@@ -45,6 +40,8 @@ def learn():
     train_set = df[df['subset'] == 'train']
     test_set = df[df['subset'] == 'test']
 
+    print(train_set[features])
+
     voting_clf.fit(train_set[features], factorized[0][:-2])
     rnd_clf.fit(train_set[features], factorized[0][:-2])
 
@@ -52,16 +49,16 @@ def learn():
     print(rnd_clf.predict(test_set[features]))
 
     # Each model has a accuracy of 1.0 -- caused by data overfitting, will have to change simulated dataset
-    for clf in (log_clf, rnd_clf, voting_clf):
-        clf.fit(train_set[features], factorized[0][:-2])
-        y_pred = clf.predict(test_set[features])
-        print(clf.__class__.__name__, accuracy_score(y_pred, factorized[0][-2:]))
+    # for clf in (log_clf, rnd_clf, voting_clf):
+    #     clf.fit(train_set[features], factorized[0][:-2])
+    #     y_pred = clf.predict(test_set[features])
+    #     print(clf.__class__.__name__, accuracy_score(y_pred, factorized[0][-2:]))
 
     # Print prediction probabilities for each Dx categorization for each "test" item
     print(rnd_clf.predict_proba(test_set[features]))
 
     # Print feature importance
-    print(list(zip(train_set[features], rnd_clf.feature_importances_)))
+    # print(list(zip(train_set[features], rnd_clf.feature_importances_)))
 
 
 def RF():
@@ -77,6 +74,11 @@ def RF():
     test_set = df[df['train'] == False]
     train_targets = list(train_set['Dx'])
     test_targets = list(test_set['Dx'])
+
+    X_train = train_set.columns[2:-2]
+    X_test = (test_set[X_train])
+    X_train = (train_set[X_train])
+
     for row in range(train_set.shape[0]):
         train_targets[row] = literal_eval(train_targets[row])
 
@@ -86,7 +88,25 @@ def RF():
     mlb = MultiLabelBinarizer()
     Y = mlb.fit_transform(train_targets)
 
-    print(Y[0:5])
+    model = Pipeline([('vectorizer', CountVectorizer()), ('tfidf', TfidfTransformer()),
+                      ('clf', OneVsRestClassifier(LinearSVC()))])
+
+    clf = RandomForestClassifier()
+
+    clf.fit(X_train, Y)
+
+    # print(clf.predict(X_test))
+    #
+    # print((clf.predict_proba(X_test)))
+
+    labels = mlb.inverse_transform(clf.predict(X_test))
+
+    from pprint import pprint
+
+    pprint(labels)
+
+    # for item, labels in zip(X_test, labels):
+    #     print('{1}'.format(item, ', '.join(labels)))
 
 if __name__ == '__main__':
     RF()
