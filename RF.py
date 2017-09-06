@@ -70,8 +70,16 @@ def RF():
     df = pd.DataFrame(data=df)
     df = df.set_index('EID')
 
-    train_set = df[df['train'] == True]
-    test_set = df[df['train'] == False]
+    train_set = df[df['train'] == True][0:100]
+    test_set = df[df['train'] == False][0:50]
+
+    writer = pd.ExcelWriter('Train_Set.xlsx')
+    writer2 = pd.ExcelWriter('Test_Set.xlsx')
+    train_set.to_excel(writer, 'DSM_Data')
+    test_set.to_excel(writer2, 'DSM_Data')
+    writer.save()
+    writer2.save()
+
     train_targets = list(train_set['Dx'])
     test_targets = list(test_set['Dx'])
 
@@ -87,6 +95,7 @@ def RF():
 
     mlb = MultiLabelBinarizer()
     Y = mlb.fit_transform(train_targets)
+    # print(Y[0])
 
     model = Pipeline([('vectorizer', CountVectorizer()), ('tfidf', TfidfTransformer()),
                       ('clf', OneVsRestClassifier(LinearSVC()))])
@@ -95,7 +104,7 @@ def RF():
 
     clf.fit(X_train, Y)
 
-    # print(clf.predict(X_test))
+    print(clf.predict(X_test)[:10])
     #
     # print((clf.predict_proba(X_test)))
 
@@ -104,6 +113,8 @@ def RF():
     from pprint import pprint
 
     pprint(labels)
+
+    print(len(labels))
 
     # for item, labels in zip(X_test, labels):
     #     print('{1}'.format(item, ', '.join(labels)))
