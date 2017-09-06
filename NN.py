@@ -13,6 +13,8 @@ from keras.optimizers import SGD
 K.set_image_dim_ordering('th')
 from sklearn import preprocessing
 import keras
+from sklearn.preprocessing import MultiLabelBinarizer
+from ast import literal_eval
 
 ########################################################################################################################
 
@@ -141,53 +143,49 @@ output = pd.ExcelFile(filename)
 df = output.parse(sheetname)
 df = pd.DataFrame(data=df)
 
-mlb = preprocessing.MultiLabelBinarizer()
-# bin = mlb.fit_transform(['Somatic Symptom and Related Disorders', 'Attention-Deficit/Hyperactivity Disorder', 'Specific Learning Disorder', 'Intellectual Disability', 'Substance Related and Addictive Disorders', 'Elimination Disorders', 'Sleep-Wake Disorders', 'Autism Spectrum Disorder', 'Disruptive, Impulse Control and Conduct Disorders', 'Anxiety Disorders', 'Schizophrenia Spectrum and other Psychotic Disorders', 'Motor Disorder', 'Depressive Disorders', 'Feeding and Eating Disorders', 'No Diagnosis Given', 'Gender Dysphoria', 'Bipolar and Related Disorders', 'Trauma and Stressor Related Disorders', 'Personality Disorders', 'Obsessive Compulsive and Related Disorders', 'Other Conditions That May Be a Focus of Clinical Attention', 'Communication Disorder'])
-bin = mlb.fit_transform(df['Dx'])
+train_set = df[df['train'] == True][0:100]
+test_set = df[df['train'] == False][0:50]
 
-print(np.array(df['Dx']))
+train_targets = list(train_set['Dx'])
+test_targets = list(test_set['Dx'])
 
-sample = np.array(df['Dx'])
-sample = mlb.fit_transform(sample)
-print(sample[0])
+X_train = train_set.columns[2:-2]
+X_test = (test_set[X_train])
+X_train = (train_set[X_train])
 
-df['labelled'] = list(bin)
+print(X_train)
 
-num_col = df.shape[1] - 4
-num_row = df.shape[0]
-Dx_types = ['Number of different types of Dx']
+for row in range(train_set.shape[0]):
+    train_targets[row] = literal_eval(train_targets[row])
 
-train_set = df[df['train'] == True]
-test_set = df[df['train'] == False]
+for row in range(test_set.shape[0]):
+    test_targets[row] = literal_eval(test_targets[row])
 
-tr_array = train_set.values
-te_array = test_set.values
-
-row = ['Index of column that contains last feature']
-
-tr_inputs = tr_array[:, 1:-3]
-te_inputs = te_array[:, 1:-3]
-tr_outputs = tr_array[:, -1:]
-te_outputs = te_array[:, -1:]
-
-tr_row = tr_array.shape[0]
-print(tr_inputs.shape)
-print(tr_outputs.shape)
-
+mlb = MultiLabelBinarizer()
+Y = mlb.fit_transform(train_targets)
 
 def HBN_model():
     model = Sequential()
-    model.add(Dense(tr_row, input_shape=(num_col,), activation='relu'))
+    model.add(Dense(150, input_shape=(606,), activation='relu'))
     model.add(Dropout(.1))
-    model.add(Dense(len(bin), activation='sigmoid'))
+    model.add(Dense(75, activation='sigmoid'))
+    model.add(Dense(24))
     # model.compile(loss='binary_crossentropy', optimizer=sgd)
     model.compile(loss='binary_crossentropy', optimizer='adam')
     return model
 
 model = HBN_model()
-model.fit(tr_inputs, tr_outputs, epochs=10, batch_size=50)
-preds = model.predict(te_inputs)
+print(X_train)
+model.fit(np.array(X_train), Y, epochs=5, batch_size=5, verbose=1)
+
+Z = mlb.fit_transform(test_targets)
+preds = model.predict(np.array(X_test))
 preds[preds >= .5] = 1
 preds[preds < 0.5] = 0
+print(preds[0])
+print(preds[1])
+print(preds[2])
+print(preds[3])
+print(preds[4])
 
 # Compare output of predictions in 'preds' and targets in 'test_target'
