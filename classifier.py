@@ -3,8 +3,8 @@
 import pandas as pd
 import numpy as np
 from collections import Counter
-from itertools import groupby
-
+from itertools import groupby, chain
+import collections
 
 def get_responses():
 
@@ -20,7 +20,6 @@ def get_responses():
     df = df.replace('NA', np.NaN)
 
     return df
-
 
 def get_Dx():
 
@@ -55,33 +54,39 @@ def pair_diagnoses(df, dx):
             if col % 3 == 2 and not isinstance(dx.iloc[row, col], float):
                 # For Dx with ICD 10 Code that begins with 'F'
                 if 'F' in dx.iloc[row, col]:
-                    Dx_EID_list.append(dx.iloc[row, col - 2])
-                    if ('F' + dx.iloc[row, col].split('F', 1)[1][:2]) not in code_dict.keys():
-                        if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
+                    # Dx_EID_list.append(dx.iloc[row, col - 2])
+                    if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
+                        if str(dx.iloc[row, col - 1]) == 'nan':
+                            Dx_EID_list.append(dx.iloc[row, col - 2])
                             code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[row, col - 1]
                         else:
-                            code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[
-                                row, col - 2]
+                            Dx_EID_list.append(dx.iloc[row, col - 1])
+                    else:
+                        code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[
+                            row, col - 2]
+                        Dx_EID_list.append(dx.iloc[row, col - 2])
 
                 # For Dx with ICD 10 Code that begins with 'Z'
                 elif 'Z' in dx.iloc[row, col]:
-                    Dx_EID_list.append(dx.iloc[row, col - 2])
-                    if ('Z' + dx.iloc[row, col].split('Z', 1)[1][:2]) not in code_dict.keys():
-                        if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
-                            code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[row, col - 1]
-                        else:
-                            code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[
-                                row, col - 2]
+                    # Dx_EID_list.append(dx.iloc[row, col - 2])
+                    if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
+                        Dx_EID_list.append(dx.iloc[row, col - 1])
+                        code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[row, col - 1]
+                    else:
+                        code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[
+                            row, col - 2]
+                        Dx_EID_list.append(dx.iloc[row, col - 2])
 
                 # For Dx with ICD 10 Code that begins with 'G'
                 elif 'G' in dx.iloc[row, col]:
-                    Dx_EID_list.append(dx.iloc[row, col - 2])
-                    if ('G' + dx.iloc[row, col].split('G', 1)[1][:2]) not in code_dict.keys():
-                        if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
-                            code_dict['G' + dx.iloc[row, col].split('G', 1)[1][:2]] = dx.iloc[row, col - 1]
-                        else:
-                            code_dict['G' + dx.iloc[row, col].split('G', 1)[1][:2]] = dx.iloc[
-                                row, col - 2]
+                    # Dx_EID_list.append(dx.iloc[row, col - 2])
+                    if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
+                        Dx_EID_list.append(dx.iloc[row, col - 1])
+                        code_dict['G' + dx.iloc[row, col].split('G', 1)[1][:2]] = dx.iloc[row, col - 1]
+                    else:
+                        code_dict['G' + dx.iloc[row, col].split('G', 1)[1][:2]] = dx.iloc[
+                            row, col - 2]
+                        Dx_EID_list.append(dx.iloc[row, col - 2])
 
                 # For Dx that does not have an ICD 10 Code
 
@@ -105,7 +110,7 @@ def pair_diagnoses(df, dx):
 
     for row in range(df.shape[0]):
         if df.index[row] in dx.index.values:
-            df_Dx_match.loc[str(df.index[row]), 'Dx'] = list(EID_Dx_dict[str(df.index[row])])
+            df_Dx_match.loc[str(df.index[row]), 'Dx'] = list(EID_Dx_dict[(df.index[row])])
         else:
             No_EID_drop_list.append(int(row))
 
@@ -114,6 +119,21 @@ def pair_diagnoses(df, dx):
 
     return df
 
+def split_age(df):
+    df_young = df[df['Age'] < 6.0]
+    df_mid = df[df['Age'] < 18][df['Age'] >= 6.0]
+    df_adult = df[df['Age'] >= 18]
+
+    # Count frequency of each diagnosis
+
+    count_set = list(df_mid['Dx'])
+    freq = collections.defaultdict(int)
+    for x in chain.from_iterable(count_set):
+        freq[x] += 1
+
+    print(freq)
+
+    return df_young, df_mid, df_adult
 
 def feature_trim(df):
 
@@ -121,14 +141,14 @@ def feature_trim(df):
 
     mode_list = []
 
-    for column in df:
-        if df[column].isnull().sum() > round(.30 * df.shape[0], 0):
-            df = df.drop(column, axis=1)
-
-    for column in df:
-        freqs = groupby(Counter(column).most_common(), lambda x: x[1])
-        modes = list(freqs)[0][0]
-        mode_list.append(modes)
+    # for column in df:
+    #     if df[column].isnull().sum() > round(.30 * df.shape[0], 0):
+    #         df = df.drop(column, axis=1)
+    #
+    # for column in df:
+    #     freqs = groupby(Counter(column).most_common(), lambda x: x[1])
+    #     modes = list(freqs)[0][0]
+    #     mode_list.append(modes)
 
     NaN_droplist = []
 
@@ -141,24 +161,27 @@ def feature_trim(df):
     # print(df.isnull().sum(axis=1)) # Display the number of NaN values for each EID
 
     df = df.replace(np.NaN, 'NA')
-
-    np.random.seed(seed=0)
-    df['train'] = np.random.uniform(0, 1, len(df)) <= .30
     df_copy = df
 
-    # Replace missing values with the mode of each feature
+    # np.random.seed(seed=0)
+    # df['train'] = np.random.uniform(0, 1, len(df)) <= .75
+    # df_copy = df
 
-    for row in range(df.shape[0]):
-        for col in range(df.shape[1]):
-            if df.iloc[row, col] == 'NA':
-                df_copy.iloc[row, col] = mode_list[col]
+    # # Replace missing values with the mode of each feature
+    #
+    # for row in range(df.shape[0]):
+    #     for col in range(df.shape[1]):
+    #         if df.iloc[row, col] == 'NA':
+    #             df_copy.iloc[row, col] = mode_list[col]
+    #
+    # for row in range(df.shape[0]):
+    #     for col in range(df.shape[1]):
+    #         if df.iloc[row, col] == 'NA':
+    #             df_copy.iloc[row, col] = mode_list[col]
 
-    for row in range(df.shape[0]):
-        for col in range(df.shape[1]):
-            if df.iloc[row, col] == 'NA':
-                df_copy.iloc[row, col] = mode_list[col]
+    return df_copy
 
-    # Save to excel
+def save(df_copy):
 
     writer = pd.ExcelWriter('DSM_NaN_Replaced.xlsx')
     df_copy.to_excel(writer, 'DSM_Data')
@@ -168,4 +191,6 @@ if __name__ == "__main__":
     df = get_responses()
     dx = get_Dx()
     df = pair_diagnoses(df, dx)
-    feature_trim(df)
+    split_age(df)
+    df_copy = feature_trim(df)
+    save(df_copy)
