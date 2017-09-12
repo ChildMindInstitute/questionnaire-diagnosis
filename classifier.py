@@ -120,9 +120,9 @@ def pair_diagnoses(df, dx):
     return df
 
 def split_age(df):
-    df_young = df[df['Age'] < 6.0]
-    df_mid = df[df['Age'] < 18][df['Age'] >= 6.0]
-    df_adult = df[df['Age'] >= 18]
+    df_young = df[df['Age'] < 8.0]
+    df_mid = df[df['Age'] < 17][df['Age'] >= 8.0]
+    df_adult = df[df['Age'] >= 17]
 
     # Count frequency of each diagnosis
 
@@ -131,9 +131,22 @@ def split_age(df):
     for x in chain.from_iterable(count_set):
         freq[x] += 1
 
-    print(freq)
-
     return df_young, df_mid, df_adult
+
+
+def remove_age_q(df_mid):
+
+    drop_list = []
+
+    for col in df_mid:
+        for item in ['ACE', 'CDI', 'ASR', 'CAARS', 'STAI', 'YFAS', 'ICU', 'CBCL',
+                     'CIS', 'SRS', 'TRF', 'WHODAS']:
+            if item in col:
+                drop_list.append(col)
+
+    df = df_mid.drop(drop_list, axis=1)
+
+    return df
 
 def feature_trim(df):
 
@@ -141,27 +154,26 @@ def feature_trim(df):
 
     mode_list = []
 
-    # for column in df:
-    #     if df[column].isnull().sum() > round(.30 * df.shape[0], 0):
-    #         df = df.drop(column, axis=1)
-    #
+    for column in df:
+        if df[column].isnull().sum() > round(.30 * df.shape[0], 0):
+            df = df.drop(column, axis=1)
+
     # for column in df:
     #     freqs = groupby(Counter(column).most_common(), lambda x: x[1])
     #     modes = list(freqs)[0][0]
     #     mode_list.append(modes)
-
-    NaN_droplist = []
-
+    #
+    # NaN_droplist = []
+    #
     # for num in range(df.shape[0]):
     #     if df.isnull().sum(axis=1)[num] > 50:
     #         NaN_droplist.append(int(num))
-
-    df = df.drop(df.index[NaN_droplist])
-
+    #
+    # df = df.drop(df.index[NaN_droplist])
+    #
     # print(df.isnull().sum(axis=1)) # Display the number of NaN values for each EID
 
     df = df.replace(np.NaN, 'NA')
-    df_copy = df
 
     # np.random.seed(seed=0)
     # df['train'] = np.random.uniform(0, 1, len(df)) <= .75
@@ -179,18 +191,20 @@ def feature_trim(df):
     #         if df.iloc[row, col] == 'NA':
     #             df_copy.iloc[row, col] = mode_list[col]
 
-    return df_copy
+    return df
 
-def save(df_copy):
+
+def save(df):
 
     writer = pd.ExcelWriter('DSM_NaN_Replaced.xlsx')
-    df_copy.to_excel(writer, 'DSM_Data')
+    df.to_excel(writer, 'DSM_Data')
     writer.save()
 
 if __name__ == "__main__":
     df = get_responses()
     dx = get_Dx()
     df = pair_diagnoses(df, dx)
-    split_age(df)
-    df_copy = feature_trim(df)
-    save(df_copy)
+    [df_young, df_mid, df_adult] = split_age(df)
+    df = remove_age_q(df_mid)
+    df = feature_trim(df)
+    save(df)
