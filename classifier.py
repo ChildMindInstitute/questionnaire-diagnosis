@@ -114,12 +114,13 @@ def pair_diagnoses(df, dx):
         else:
             No_EID_drop_list.append(int(row))
 
-    print(No_EID_drop_list)
     df = df_Dx_match.drop(df_Dx_match.index[No_EID_drop_list])
 
     return df
 
+
 def split_age(df):
+
     df_young = df[df['Age'] < 8.0]
     df_mid = df[df['Age'] < 17][df['Age'] >= 8.0]
     df_adult = df[df['Age'] >= 17]
@@ -148,56 +149,122 @@ def remove_age_q(df_mid):
 
     return df
 
-def feature_trim(df):
 
-    # Remove questions / patients with missing data, replace other NaN with mode
+def feature_trim(df, param):
+
+    for column in df:
+        if df[column].isnull().sum() > round(float(param) * df.shape[0], 0):
+            df = df.drop(column, axis=1)
+
+    df = df.replace(np.NaN, 'NA')
+
+    if param == 1.0:
+        param = '1'
+    elif param == .30:
+        param = '2'
+    elif param == .05:
+        param = '3'
+
+    return df, param
+
+def replace_missing(df):
+
+    # Replace missing values with the mode of each feature
 
     mode_list = []
 
     for column in df:
-        if df[column].isnull().sum() > round(.30 * df.shape[0], 0):
-            df = df.drop(column, axis=1)
+        freqs = groupby(Counter(column).most_common(), lambda x: x[1])
+        modes = list(freqs)[0][0]
+        mode_list.append(modes)
 
-    # for column in df:
-    #     freqs = groupby(Counter(column).most_common(), lambda x: x[1])
-    #     modes = list(freqs)[0][0]
-    #     mode_list.append(modes)
-    #
-    # NaN_droplist = []
-    #
-    # for num in range(df.shape[0]):
-    #     if df.isnull().sum(axis=1)[num] > 50:
-    #         NaN_droplist.append(int(num))
-    #
-    # df = df.drop(df.index[NaN_droplist])
-    #
-    # print(df.isnull().sum(axis=1)) # Display the number of NaN values for each EID
+    df_copy = df
 
-    df = df.replace(np.NaN, 'NA')
+    for row in range(df.shape[0]):
+        for col in range(df.shape[1]):
+            if df.iloc[row, col] == 'NA':
+                df_copy.iloc[row, col] = mode_list[col]
 
-    # np.random.seed(seed=0)
-    # df['train'] = np.random.uniform(0, 1, len(df)) <= .75
-    # df_copy = df
-
-    # # Replace missing values with the mode of each feature
-    #
-    # for row in range(df.shape[0]):
-    #     for col in range(df.shape[1]):
-    #         if df.iloc[row, col] == 'NA':
-    #             df_copy.iloc[row, col] = mode_list[col]
-    #
-    # for row in range(df.shape[0]):
-    #     for col in range(df.shape[1]):
-    #         if df.iloc[row, col] == 'NA':
-    #             df_copy.iloc[row, col] = mode_list[col]
+    for row in range(df.shape[0]):
+        for col in range(df.shape[1]):
+            if df.iloc[row, col] == 'NA':
+                df_copy.iloc[row, col] = mode_list[col]
 
     return df
 
 
-def save(df):
+def anx(df):
 
-    writer = pd.ExcelWriter('DSM_NaN_Replaced.xlsx')
-    df.to_excel(writer, 'DSM_Data')
+    df['Anx'] = np.zeros(len(df)).astype('object')
+    copy = df
+
+    for row in range(df.shape[0]):
+        if 'Anxiety' in str(df.iloc[row, copy.shape[1]-2]):
+            copy.iloc[row, copy.shape[1]-1] = 1
+        else:
+            copy.iloc[row, copy.shape[1]-1] = 0
+
+    anx_full = copy
+
+    return anx_full
+
+def adhd(df):
+
+    df['adhd'] = np.zeros(len(df)).astype('object')
+    copy = df
+
+    for row in range(df.shape[0]):
+
+        if 'Attention' in str(df.iloc[row, df.shape[1]-3]):
+            copy.iloc[row, copy.shape[1]-1] = 1
+        else:
+            copy.iloc[row, copy.shape[1]-1] = 0
+
+    adhd_full = copy
+
+    return adhd_full
+
+def ASD(df):
+
+    df['asd'] = np.zeros(len(df)).astype('object')
+    copy = df
+
+    for row in range(df.shape[0]):
+
+        if 'Autism' in str(df.iloc[row, df.shape[1]-4]):
+            copy.iloc[row, copy.shape[1]-1] = 1
+        else:
+            copy.iloc[row, copy.shape[1]-1] = 0
+
+    final_df = copy
+
+    return final_df
+
+
+def train_test(df):
+
+    np.random.seed(seed=0)
+    df['train'] = np.random.uniform(0, 1, len(df)) <= .80
+    print(df)
+    train = df[df['train'] == True][0:round(df.shape[0]*2/5)]
+    test = df[df['train'] == False][0:round(df.shape[0]/10)]
+
+    print(df.shape)
+
+    return train, test
+
+def export(train, test, param):
+
+    path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Train' + param + '.xlsx'
+
+    writer = pd.ExcelWriter(path)
+    train.to_excel(writer, 'Train')
+    writer.save()
+
+    path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Test' + param + '.xlsx'
+
+    writer = pd.ExcelWriter(path)
+    test.to_excel(writer, 'Test')
     writer.save()
 
 if __name__ == "__main__":
@@ -206,5 +273,10 @@ if __name__ == "__main__":
     df = pair_diagnoses(df, dx)
     [df_young, df_mid, df_adult] = split_age(df)
     df = remove_age_q(df_mid)
-    df = feature_trim(df)
-    save(df)
+    [df, param] = feature_trim(df, 1.0)
+    # df = replace_missing(df)
+    anx_full = anx(df)
+    adhd_full = adhd(anx_full)
+    final_df = ASD(adhd_full)
+    [train, test] = train_test(final_df)
+    export(train, test, param)
