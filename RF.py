@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.svm import LinearSVC
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import f1_score
+import matplotlib.pyplot as plt
 
 def learn():
 
@@ -87,7 +88,7 @@ def RF(df_tr, df_te, Dx):
     train_feat = df_tr[df_tr.columns[2:-5]]
     test_feat = df_te[df_te.columns[2:-5]]
 
-    clf = RandomForestClassifier()
+    clf = RandomForestClassifier(random_state=0)
 
     clf.fit(train_feat, train_targets)
 
@@ -103,7 +104,15 @@ def RF(df_tr, df_te, Dx):
         if float(importance) > float(5/train_feat.shape[1]):
             threshold_features.append((question, importance))
 
-    print(threshold_features)
+    (questions, importances) = zip(*threshold_features)
+    importances = np.array(importances)
+    indices = np.argsort(importances)[::-1]
+
+    # Plot only important features
+    plt.figure()
+    plt.bar(range(len(importances)), importances[indices])
+    plt.xlim([-1, len(importances)])
+    plt.show()
 
 
 def OneVsRF():
