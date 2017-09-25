@@ -64,15 +64,15 @@ def learn():
 
 def load(num):
 
-    train = 'DSM_Train' + str(num) + 'replaced.xlsx'
-    test = 'DSM_Test' + str(num) + 'replaced.xlsx'
+    train = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Train' + str(num) + 'replaced.xlsx'
+    test = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Test' + str(num) + 'replaced.xlsx'
 
-    output = pd.ExcelFile('/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/' + train)
+    output = pd.ExcelFile(train)
     df_tr = output.parse('Train')
     df_tr = pd.DataFrame(data=df_tr)
     df_tr = df_tr.set_index('EID')
 
-    output = pd.ExcelFile('/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/' + test)
+    output = pd.ExcelFile(test)
     df_te = output.parse('Test')
     df_te = pd.DataFrame(data=df_te)
     df_te = df_te.set_index('EID')
@@ -80,54 +80,30 @@ def load(num):
     return df_tr, df_te
 
 
-def RF(df_tr, df_te):
+def RF(df_tr, df_te, Dx):
 
-    train_set = df_tr
-    test_set = df_te
-
-    print(train_set.head)
-    print(test_set.head)
-
-    train_targets = list(train_set['Dx'])
-    test_targets = list(test_set['Dx'])
-
-    X_train = train_set.columns[2:-2]
-    X_test = (test_set[X_train])
-    X_train = (train_set[X_train])
-
-    for row in range(train_set.shape[0]):
-        train_targets[row] = literal_eval(train_targets[row])
-
-    for row in range(test_set.shape[0]):
-        test_targets[row] = literal_eval(test_targets[row])
-
-    mlb = MultiLabelBinarizer()
-    Y = mlb.fit_transform(train_targets)
-    # print(Y[0])
-
-    model = Pipeline([('vectorizer', CountVectorizer()), ('tfidf', TfidfTransformer()),
-                      ('clf', OneVsRestClassifier(LinearSVC()))])
+    train_targets = list(df_tr[Dx])
+    test_targets = list(df_te[Dx])
+    train_feat = df_tr[df_tr.columns[2:-5]]
+    test_feat = df_te[df_te.columns[2:-5]]
 
     clf = RandomForestClassifier()
 
-    clf.fit(X_train, Y)
+    clf.fit(train_feat, train_targets)
 
-    print(clf.predict(X_test)[:10])
-    #
-    # print((clf.predict_proba(X_test)))
+    predictions = clf.predict(test_feat)
 
-    labels = mlb.inverse_transform(clf.predict(X_test))
+    print(f1_score(test_targets, predictions, average='weighted'), accuracy_score(test_targets, predictions))
 
-    print(X_test)
+    features = list(zip(train_feat, clf.feature_importances_))
 
-    from pprint import pprint
+    threshold_features = []
+    for question, importance in features:
+        # If the feature importance is greater than 5 times the importance if all features were equally important
+        if float(importance) > float(5/train_feat.shape[1]):
+            threshold_features.append((question, importance))
 
-    pprint(labels)
-
-    print(len(labels))
-
-    # for item, labels in zip(X_test, labels):
-    #     print('{1}'.format(item, ', '.join(labels)))
+    print(threshold_features)
 
 
 def OneVsRF():
@@ -217,4 +193,4 @@ def OneVsRF():
 if __name__ == '__main__':
 
     [df_tr, df_te] = load(3)
-    # RF(df_tr, df_te)
+    RF(df_tr, df_te, 'adhd')
