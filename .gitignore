@@ -1,0 +1,10 @@
+# Ignore the resource directory because it contains the raw data.
+resources/
+
+# Ignore temporary files
+.ipynb_checkpoints/
+*temp*.py
+*temp*.ipynb
+
+
+
