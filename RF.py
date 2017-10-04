@@ -81,38 +81,70 @@ def load(num):
     return df_tr, df_te
 
 
-def RF(df_tr, df_te, Dx):
+def RF(df_tr, df_te, Dx, iters):
 
     train_targets = list(df_tr[Dx])
     test_targets = list(df_te[Dx])
     train_feat = df_tr[df_tr.columns[2:-5]]
     test_feat = df_te[df_te.columns[2:-5]]
 
-    clf = RandomForestClassifier(random_state=0)
+    f1_list = []
+    acc_list = []
+    feature_dict = {}
+    iteration = 0
 
-    clf.fit(train_feat, train_targets)
+    for num in range(iters):
 
-    predictions = clf.predict(test_feat)
+        clf = RandomForestClassifier(n_estimators=100)#(random_state=0)
 
-    print(f1_score(test_targets, predictions, average='weighted'), accuracy_score(test_targets, predictions))
+        clf.fit(train_feat, train_targets)
 
-    features = list(zip(train_feat, clf.feature_importances_))
+        predictions = clf.predict(test_feat)
 
-    threshold_features = []
-    for question, importance in features:
-        # If the feature importance is greater than 5 times the importance if all features were equally important
-        if float(importance) > float(5/train_feat.shape[1]):
-            threshold_features.append((question, importance))
+        # print(f1_score(test_targets, predictions, average='weighted'), accuracy_score(test_targets, predictions))
 
-    (questions, importances) = zip(*threshold_features)
-    importances = np.array(importances)
-    indices = np.argsort(importances)[::-1]
+        f1_list.append(f1_score(test_targets, predictions, average='weighted'))
+        acc_list.append(accuracy_score(test_targets, predictions))
 
-    # Plot only important features
-    plt.figure()
-    plt.bar(range(len(importances)), importances[indices])
-    plt.xlim([-1, len(importances)])
-    plt.show()
+        features = list(zip(train_feat, clf.feature_importances_))
+
+        threshold_features = []
+        for question, importance in features:
+            # If the feature importance is greater than 5 times the importance if all features were equally important
+            if float(importance) > float(5/train_feat.shape[1]):
+                threshold_features.append((question, importance))
+
+        (questions, importances) = zip(*threshold_features)
+        questions = list(questions)
+        importances = np.array(importances)
+        indices = np.argsort(importances)[::-1]
+
+        for num in range(len(questions)):
+            if str(questions[num]) in feature_dict.keys():
+                feature_dict[str(questions[num])] = int(feature_dict[str(questions[num])]) + 1
+            else:
+                feature_dict[questions[num]] = 1
+
+        iteration += 1
+        print('Iteration # ' + str(iteration))
+
+        # Plot only important features
+
+        if iters == 1:
+            plt.figure(figsize=(5, 5))
+            plt.bar(range(len(importances)), importances[indices])
+            plt.xticks(range(len(importances)), questions, rotation=15)
+            plt.xlim([-1, len(importances)])
+            plt.axhline(y=float(5/train_feat.shape[1]), color='r', linestyle='--')
+            plt.show()
+
+    print(feature_dict)
+
+    top_feat = sorted(feature_dict.items(), key=lambda attrib: attrib[1], reverse=True)
+
+    print(top_feat)
+    print(np.array(f1_list).mean())
+    print(np.array(acc_list).mean())
 
 
 def OneVsRF():
@@ -201,5 +233,6 @@ def OneVsRF():
 
 if __name__ == '__main__':
 
-    [df_tr, df_te] = load(3)
-    RF(df_tr, df_te, 'adhd')
+    [df_tr, df_te] = load(1)
+    iters = 1000
+    RF(df_tr, df_te, 'asd', iters)
