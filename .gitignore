@@ -10,6 +10,9 @@ resources/
 old-notebooks/
 *WIP*.ipynb
 *WIP.ipynb
+# Also ignore dated checkpoints.
+*2017*.ipynb
+*2018*.ipynb
 
 
 
