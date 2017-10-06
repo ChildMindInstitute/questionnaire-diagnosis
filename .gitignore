@@ -17,3 +17,9 @@ old-notebooks/
 # Temp (to be removed after submodules are configured)
 modules/
 
+# Ignore test output files:
+tests/bdb/
+tests/data/
+tests/output/
+tests/png/
+
