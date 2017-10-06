@@ -14,5 +14,6 @@ old-notebooks/
 *2017*.ipynb
 *2018*.ipynb
 
-
+# Temp (to be removed after submodules are configured)
+modules/
 
