@@ -23,3 +23,12 @@ tests/data/
 tests/output/
 tests/png/
 
+# Ingore linux artifacts
+.fuse_hidden*
+
+# Ignore vim swap files
+*.swp
+
+# Ingore python build artifacts
+*.pyc
+*/__pychache__/
