@@ -140,6 +140,10 @@ def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed
         current_scores = []
         # Loop through all the candidate questions.
 
+        if selected_questions:
+            selected_columns = ','.join(selected_questions)
+        else:
+            selected_columns = 'None'
 
         for next_question in candidate_questions:
             columns = ','.join([
@@ -152,10 +156,6 @@ def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed
                 n_samples=number_mc_samples,
                 diagnosis= DIAGNOSIS[diagnosis]
             )
-            if selected_questions:
-                selected_columns = ','.join(selected_questions)
-            else:
-                selected_columns = 'None'
             bdb.execute('DROP TABLE IF EXISTS "temp"')
             bdb.execute(current_bql_str)
             bdb.sql_execute('INSERT INTO cond_entropy (entropy, mi, columns)' +
