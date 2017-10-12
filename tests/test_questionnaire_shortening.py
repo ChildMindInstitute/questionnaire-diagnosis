@@ -32,14 +32,15 @@ from iventure.utils_bql import query
 from utils import mkdir
 BQL_STR = '''
 CREATE TABLE "temp" AS
-  SELECT entropy, mi FROM 
+  SELECT entropy, mi FROM
     (ESTIMATE MUTUAL INFORMATION OF
-      ({columns}) WITH ({columns}) 
+      ({columns}) WITH ({columns})
       USING {n_samples} SAMPLES AS entropy BY pop),
     (ESTIMATE MUTUAL INFORMATION OF
       ({columns}) WITH "{diagnosis}"
       USING {n_samples} SAMPLES AS mi BY pop)
 '''
+
 
 DESIRED_NUMBER_OF_QUESTIONS = 10
 
