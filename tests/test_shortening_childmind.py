@@ -29,7 +29,7 @@ from bayeslite import bayesdb_open
 from bayeslite import bayesdb_read_csv
 from iventure.utils_bql import query
 
-from utils import mkdir
+from testing_utils import mkdir
 
 
 BQL_STR = '''
