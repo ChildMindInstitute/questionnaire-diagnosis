@@ -29,7 +29,31 @@ from bayeslite import bayesdb_open
 from bayeslite import bayesdb_read_csv
 from iventure.utils_bql import query
 
-from utils import mkdir
+from testing_utils import mkdir
+
+def read_mi(df):
+    return df['mi'].values[0]
+
+def get_bql_pattern(next_column, diagnosis, n_samples, selected_questions):
+    if selected_questions:
+        already_selected_questions = ','.join(selected_questions)
+        return '''ESTIMATE MUTUAL INFORMATION OF\n    "{next_column}" WITH
+        "{diagnosis}"\n    GIVEN ({already_selected_questions})\n    USING
+        {n_samples} SAMPLES AS mi \n    BY pop
+                '''.format(
+                    next_column=next_column,
+                    diagnosis=diagnosis,
+                    n_samples=n_samples,
+                    already_selected_questions=already_selected_questions
+        )
+    else:
+        return '''ESTIMATE MUTUAL INFORMATION OF\n   "{next_column}" WITH
+        "{diagnosis}"\n    USING {n_samples} SAMPLES AS mi BY pop
+            '''.format(
+                next_column=next_column,
+                diagnosis=diagnosis,
+                n_samples=n_samples
+        )
 
 LEAK_P_SPONTANEOUS = 0.95
 
@@ -80,12 +104,20 @@ CREATE TABLE "temp" AS
       USING {n_samples} SAMPLES AS mi BY pop)
 '''
 
-def shorten_conditional_entropy(bdb, experimental_config):
-
+def init_question_lists(experimental_config):
+    """ Initialized lists search. """
     candidate_questions = experimental_config['column_names']
     # Remove the diagnosis from the candidates.
     candidate_questions.remove('target')
     selected_questions = [] # Initialize: no questions selected yet.
+    return candidate_questions, selected_questions
+
+def shorten_conditional_entropy(bdb, experimental_config):
+    """Shorten a questionnaire usign conditional entropy as a metric."""
+    # Selected questions is an empty list.
+    candidate_questions, selected_questions = init_question_lists(
+        experimental_config
+    )
 
     # While we don't have the desired number of quesions, keep searching.
     bdb.sql_execute('DROP TABLE IF EXISTS "cond_entropy"')
@@ -130,10 +162,35 @@ def shorten_conditional_entropy(bdb, experimental_config):
 
     return selected_questions
 
+
+def shorten_conditional_mutual_information(bdb, experimental_config):
+    """Shorten a questionnaire usign CMI as a metric."""
+    # Selected questions is an empty list.
+    candidate_questions, selected_questions = init_question_lists(
+        experimental_config
+    )
+    # While we don't have the desired number of quesions, keep searching.
+    while len(selected_questions) < DESIRED_NUMBER_OF_QUESTIONS:
+            current_scores = []
+            # Loop through all the candidate questions.
+            for next_column in candidate_questions:
+                current_bql_pattern = get_bql_pattern(
+                    next_column,
+                    'target',
+                    experimental_config['number_mc_samples'],
+                    selected_questions
+                )
+                df = query(bdb, current_bql_pattern)
+                current_scores.append(read_mi(df))
+            new_question = candidate_questions[np.argmax(current_scores)]
+            selected_questions.append(new_question)
+            candidate_questions.remove(new_question)
+    return selected_questions
+
 def prep_bdb(experimental_config):
     """ This functions prepare a bdb object.
 
-        It reads the csv file, creates the population and runs analysis. 
+        It reads the csv file, creates the population and runs analysis.
     """
     mkdir('tests/bdb/')
     file_name = 'tests/bdb/test_noisy_or_mc={number_mc_samples}_n={number_datapoints}' +\
@@ -173,8 +230,12 @@ def prep_bdb(experimental_config):
     '''.format(**experimental_config))
     return bdb
 
-DESIRED_NUMBER_OF_QUESTIONS = 10
+DESIRED_NUMBER_OF_QUESTIONS = 3
 
+SHORTENING_FUNCTIONS = {
+    'cond_entropy' : shorten_conditional_entropy,
+    'cmi' : shorten_conditional_mutual_information,
+}
 NUMBER_MC_SAMPLES = [10, 100]
 MINUTES_ANALYSIS = [60, 240]
 DIAGNOSIS = {
@@ -182,29 +243,47 @@ DIAGNOSIS = {
     'adhd': "Attention-Deficit/Hyperactivity Disorder"
 }
 
+@pytest.mark.parametrize('shortening_function_name', SHORTENING_FUNCTIONS)
 @pytest.mark.parametrize('number_mc_samples', [1])
 @pytest.mark.parametrize('number_datapoints', [1])
 @pytest.mark.parametrize('number_iterations', [1])
 @pytest.mark.parametrize('seed', range(1, 2))
-def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed):
+def test_noisy_or(
+        shortening_function_name,
+        number_mc_samples,
+        number_datapoints,
+        number_iterations,
+        seed
+    ):
 
     experimental_config = {
+        'shortening_function_name' : shortening_function_name,
         'number_mc_samples' : str(number_mc_samples),
         'number_datapoints' : str(number_datapoints),
         'number_iterations' : str(number_iterations),
         'seed'              : seed,
-        'column_names'      : generate_data_disease(seed, number_datapoints).keys()
+        'column_names'      : generate_data_disease(
+            seed, number_datapoints
+        ).keys()
     }
 
     # Prepare bdb given an experimental configuration.
     bdb = prep_bdb(experimental_config)
 
     # Select columns.
-    selected_questions = shorten_conditional_entropy(bdb, experimental_config)
+    selected_questions = SHORTENING_FUNCTIONS[shortening_function_name](
+        bdb,
+        experimental_config
+    )
 
     # Save result.
-    mkdir('tests/output/selected/')
-    output_file_name = 'tests/output/selected/questions_noisy_or_mc={number_mc_samples}' +\
+    mkdir(
+        'tests/output/noisy-or/{shortening_function_name}'.format(
+            **experimental_config
+         )
+    )
+    output_file_name = 'tests/output/noisy-or/{shortening_function_name}/' +\
+        'selected_columns_mc={number_mc_samples}' +\
         'n={number_datapoints}_iters={number_iterations}_seed={seed}.csv'
     pd.DataFrame({'selected':selected_questions}).to_csv(
         output_file_name.format(**experimental_config),
