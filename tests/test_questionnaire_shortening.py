@@ -66,6 +66,8 @@ def test_data_gen_smoke():
     assert df.columns[1] == '1'
 
 
+
+
 BQL_STR = '''
 CREATE TABLE "temp" AS
   SELECT entropy, mi FROM
@@ -92,7 +94,7 @@ DIAGNOSIS = {
 @pytest.mark.parametrize('number_iterations', [1000])
 @pytest.mark.parametrize('seed', range(1, 11))
 def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed):
-    experiment_dict = {
+    experimental_config = {
         'number_mc_samples' : str(number_mc_samples),
         'number_datapoints' : str(number_datapoints),
         'number_iterations' : str(number_iterations),
@@ -103,7 +105,7 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
     mkdir('tests/bdb/')
     file_name = 'tests/bdb/test_noisy_or_mc={number_mc_samples}_n={number_datapoints}' +\
         '_iters={number_iterations}_seed={seed}.bdb'
-    bdb_file_name = file_name.format(**experiment_dict)
+    bdb_file_name = file_name.format(**experimental_config)
     # XXX Great. I neither haven an idea why on earth one would make setting the
     # seed so complicated, neither do I fully understand what struct.pack is
     # actually doing.
@@ -117,7 +119,7 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
     bdb.execute('''
         CREATE TABLE data_table
             FROM 'tests/data/noisy_or_n={number_datapoints}_seed={seed}.csv';
-    '''.format(**experiment_dict))
+    '''.format(**experimental_config))
     column_names = query(bdb, 'SELECT * FROM data_table').columns.tolist()
     bdb.execute('''
         CREATE POPULATION pop FOR data_table WITH SCHEMA(
@@ -129,13 +131,12 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
     bdb.execute('INITIALIZE 1 MODELS FOR cc;')
     bdb.execute('''
         ANALYZE cc FOR {number_iterations} ITERATION  WAIT(OPTIMIZED);
-    '''.format(**experiment_dict))
+    '''.format(**experimental_config))
     start = time.time()
 
     candidate_questions = column_names
     # Remove the diagnosis from the candidates.
     candidate_questions.remove('target')
-
     selected_questions = [] # Initialize: no questions selected yet.
 
     # While we don't have the desired number of quesions, keep searching.
@@ -182,6 +183,6 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
     output_file_name = 'tests/output/selected/questions_noisy_or_mc={number_mc_samples}' +\
         'n={number_datapoints}_iters={number_iterations}_seed={seed}.csv'
     pd.DataFrame({'selected':selected_questions}).to_csv(
-        output_file_name.format(**experiment_dict),
+        output_file_name.format(**experimental_config),
         index=False
     )

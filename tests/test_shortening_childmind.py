@@ -58,7 +58,7 @@ DIAGNOSIS = {
 @pytest.mark.parametrize('diagnosis', DIAGNOSIS.keys())
 @pytest.mark.parametrize('seed', range(1, 2))
 def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed):
-    experiment_dict = {
+    experimetal_config = {
         'number_mc_samples' : str(number_mc_samples),
         'minutes_analysis' : str(minutes_analysis),
         'diagnosis': diagnosis,
@@ -68,7 +68,7 @@ def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed
     mkdir('tests/bdb/')
     file_name = 'tests/bdb/test_questinnaire_{diagnosis}_short_mc={number_mc_samples}' +\
         '_minutes={minutes_analysis}_seed={seed}.bdb'
-    bdb_file_name = file_name.format(**experiment_dict)
+    bdb_file_name = file_name.format(**experimetal_config)
     # XXX Great. I neither haven an idea why on earth one would make setting the
     # seed so complicated, neither do I fully understand what struct.pack is
     # actually doing.
@@ -120,7 +120,7 @@ def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed
     bdb.execute('INITIALIZE 1 MODELS FOR cc;')
     bdb.execute('''
         ANALYZE cc FOR {minutes_analysis} MINUTES WAIT(OPTIMIZED);
-    '''.format(**experiment_dict))
+    '''.format(**experimetal_config))
 
     # Get the names of all candidate variables for the shortened questionnaire.
     df = query(bdb, 'SELECT * FROM data_table LIMIT 1')
@@ -176,7 +176,7 @@ def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed
     output_file_name = 'tests/output/selected/childmind/questions_{diagnosis}_mc={number_mc_samples}' +\
         '_minutes={minutes_analysis}_seed={seed}.csv'
     pd.DataFrame({'selected':selected_questions}).to_csv(
-        output_file_name.format(**experiment_dict),
+        output_file_name.format(**experimetal_config),
         index=False
     )
 
