@@ -31,40 +31,6 @@ from iventure.utils_bql import query
 
 from utils import mkdir
 
-LEAK_P_SPONTANEOUS = 0.95
-
-N_SYMPTOMS = 4
-
-def generate_data_disease(seed, N):
-
-    prng = RandomState(seed)
-    def sample_binary(p):
-        return prng.uniform(0 , 1) < p
-
-    disease = [sample_binary(0.5) for _ in range(N)]
-    leak_p_symptoms = np.linspace(0.01, 0.49, N_SYMPTOMS)
-    data = {}
-    for symptom in range(N_SYMPTOMS):
-        data['c_' + str(symptom)] = [
-            sample_binary(1 - leak_p_symptoms[symptom] * LEAK_P_SPONTANEOUS)
-            if disease else
-            sample_binary(1 - LEAK_P_SPONTANEOUS)
-            for disease_value in disease
-        ]
-    data['target'] = disease
-    pd.DataFrame(data).to_csv(
-        'tests/data/noisy_or_n=%d_seed=%d.csv' % (N, seed),
-        index=False
-    )
-
-def test_data_gen_smoke():
-    generate_data_disease(1, 3)
-    df = pd.read_csv('tests/data/noisy_or_n=3_seed=1.csv')
-    assert len(df) == 3
-    assert df.columns.shape[0] == 5
-    assert df.columns[0] == '0'
-    assert df.columns[1] == '1'
-
 
 BQL_STR = '''
 CREATE TABLE "temp" AS
@@ -77,32 +43,31 @@ CREATE TABLE "temp" AS
       USING {n_samples} SAMPLES AS mi BY pop)
 '''
 
+DESIRED_NUMBER_OF_QUESTIONS = 1
 
-DESIRED_NUMBER_OF_QUESTIONS = 10
-
-NUMBER_MC_SAMPLES = [10, 100]
-MINUTES_ANALYSIS = [60, 240]
+NUMBER_MC_SAMPLES = [1]
+MINUTES_ANALYSIS = [1]
 DIAGNOSIS = {
     'autism': "Autism Spectrum Disorder",
     'adhd': "Attention-Deficit/Hyperactivity Disorder"
 }
 
-@pytest.mark.parametrize('number_mc_samples', [10, 50, 100])
-@pytest.mark.parametrize('number_datapoints', [10, 500])
-@pytest.mark.parametrize('number_iterations', [1000])
-@pytest.mark.parametrize('seed', range(1, 11))
-def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed):
+
+@pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
+@pytest.mark.parametrize('minutes_analysis', MINUTES_ANALYSIS)
+@pytest.mark.parametrize('diagnosis', DIAGNOSIS.keys())
+@pytest.mark.parametrize('seed', range(1, 2))
+def test_questinnaire_short(number_mc_samples, minutes_analysis, diagnosis, seed):
     experiment_dict = {
         'number_mc_samples' : str(number_mc_samples),
-        'number_datapoints' : str(number_datapoints),
-        'number_iterations' : str(number_iterations),
+        'minutes_analysis' : str(minutes_analysis),
+        'diagnosis': diagnosis,
         'seed' : seed,
     }
 
-    data  = generate_data_disease(seed, number_datapoints)
     mkdir('tests/bdb/')
-    file_name = 'tests/bdb/test_noisy_or_mc={number_mc_samples}_n={number_datapoints}' +\
-        '_iters={number_iterations}_seed={seed}.bdb'
+    file_name = 'tests/bdb/test_questinnaire_{diagnosis}_short_mc={number_mc_samples}' +\
+        '_minutes={minutes_analysis}_seed={seed}.bdb'
     bdb_file_name = file_name.format(**experiment_dict)
     # XXX Great. I neither haven an idea why on earth one would make setting the
     # seed so complicated, neither do I fully understand what struct.pack is
@@ -116,25 +81,54 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
 
     bdb.execute('''
         CREATE TABLE data_table
-            FROM 'tests/data/noisy_or_n={number_datapoints}_seed={seed}.csv';
-    '''.format(**experiment_dict))
-    column_names = query(bdb, 'SELECT * FROM data_table').columns.tolist()
+            FROM 'resources/data/init_data.csv';
+    ''')
     bdb.execute('''
-        CREATE POPULATION pop FOR data_table WITH SCHEMA(
-            MODEL {column_names}
-            AS NOMINAL;
+        CREATE POPULATION pop FOR data_table WITH SCHEMA (
+            GUESS STATTYPES FOR (*);
+            MODEL
+                 "Neurodevelopmental Disorders",
+                 "Substance Related and Addictive Disorders",
+                 "Adjustment Disorder",
+                 "Feeding and Eating Disorders",
+                 "SCQ_30",
+                 "SCQ_01",
+                 "Schizophrenia Spectrum and other Psychotic Disorders",
+                 "Neurodevelopmental Disorder",
+                 "Trauma and Stressor Related Disorders",
+                 "Tic Disorder",
+                 "Elimination Disorders",
+                 "SCQ_28",
+                 "Other Conditions That May Be a Focus of Clinical Attention",
+                 "Bipolar and Related Disorders",
+                 "Obsessive Compulsive and Related Disorders",
+                 "Motor Disorder",
+                 "Somatic Symptom and Related Disorders",
+                 "Intellectual Disability",
+                 "Sleep-Wake Disorders"
+            AS
+                NOMINAL;
+            MODEL
+                 "Age"
+            AS
+                NUMERICAL;
+            IGNORE
+                 "EID";
         );
-    '''.format(column_names=','.join(column_names)))
+    ''')
     bdb.execute('CREATE ANALYSIS SCHEMA cc FOR pop WITH BASELINE crosscat;')
     bdb.execute('INITIALIZE 1 MODELS FOR cc;')
     bdb.execute('''
-        ANALYZE cc FOR {number_iterations} ITERATION  WAIT(OPTIMIZED);
+        ANALYZE cc FOR {minutes_analysis} MINUTES WAIT(OPTIMIZED);
     '''.format(**experiment_dict))
-    start = time.time()
 
-    candidate_questions = column_names
+    # Get the names of all candidate variables for the shortened questionnaire.
+    df = query(bdb, 'SELECT * FROM data_table LIMIT 1')
+    candidate_questions = df.columns.tolist()
     # Remove the diagnosis from the candidates.
-    candidate_questions.remove('target')
+    candidate_questions.remove(DIAGNOSIS[diagnosis])
+    # Remove the subject ID from the candidates.
+    candidate_questions.remove("EID")
 
     selected_questions = [] # Initialize: no questions selected yet.
 
@@ -142,7 +136,7 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
     bdb.sql_execute('DROP TABLE IF EXISTS "cond_entropy"')
     bdb.sql_execute('CREATE TABLE cond_entropy(entropy REAL, mi REAL, columns TEXT)')
 
-    while len(selected_questions) < N_SYMPTOMS-1:
+    while len(selected_questions) < DESIRED_NUMBER_OF_QUESTIONS:
         current_scores = []
         # Loop through all the candidate questions.
 
@@ -160,7 +154,7 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
             current_bql_str = BQL_STR.format(
                 columns=columns,
                 n_samples=number_mc_samples,
-                diagnosis= 'target'
+                diagnosis= DIAGNOSIS[diagnosis]
             )
             bdb.execute('DROP TABLE IF EXISTS "temp"')
             bdb.execute(current_bql_str)
@@ -178,10 +172,11 @@ def test_noisy_or(number_mc_samples, number_datapoints, number_iterations, seed)
 
         selected_questions.append(new_question)
         candidate_questions.remove(new_question)
-    mkdir('tests/output/selected/')
-    output_file_name = 'tests/output/selected/questions_noisy_or_mc={number_mc_samples}' +\
-        'n={number_datapoints}_iters={number_iterations}_seed={seed}.csv'
+    mkdir('tests/output/selected/childmind')
+    output_file_name = 'tests/output/selected/childmind/questions_{diagnosis}_mc={number_mc_samples}' +\
+        '_minutes={minutes_analysis}_seed={seed}.csv'
     pd.DataFrame({'selected':selected_questions}).to_csv(
         output_file_name.format(**experiment_dict),
         index=False
     )
+
