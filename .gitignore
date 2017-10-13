@@ -31,4 +31,5 @@ tests/png/
 
 # Ingore python build artifacts
 *.pyc
+.cache/
 */__pychache__/
