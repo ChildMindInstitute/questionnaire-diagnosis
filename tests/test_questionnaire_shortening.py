@@ -59,8 +59,13 @@ LEAK_P_SPONTANEOUS = 0.95
 
 N_SYMPTOMS = 4
 
-def generate_data_disease(seed, N):
-
+def generate_data_disease_symptoms(seed, N):
+    """Generate data with a noisy-or net. The net is comprised of one parent
+    (the disease) and a N_SYMPTOMS children (the symptomns). The prior for
+    symptoms to be 'on' is the same for all symptoms. By fixing this prior, we
+    can determine the order of questions that should be selected through a
+    single parameter in the data generator (the leak parameter).
+    """
     prng = RandomState(seed)
     def sample_binary(p):
         return prng.uniform(0 , 1) < p
@@ -71,27 +76,104 @@ def generate_data_disease(seed, N):
     for symptom in range(N_SYMPTOMS):
         data['c_' + str(symptom)] = [
             sample_binary(1 - leak_p_symptoms[symptom] * LEAK_P_SPONTANEOUS)
-            if disease else
+            if disease_value else
             sample_binary(1 - LEAK_P_SPONTANEOUS)
             for disease_value in disease
         ]
     data['target'] = disease
     pd.DataFrame(data).to_csv(
-        'tests/data/noisy_or_n=%d_seed=%d.csv' % (N, seed),
+        'tests/data/noisy_or_disease_symptoms_n=%d_seed=%d.csv' % (N, seed),
         index=False
     )
     return data
 
-def test_data_gen_smoke():
-    generate_data_disease(1, 3)
-    df = pd.read_csv('tests/data/noisy_or_n=3_seed=1.csv')
-    assert len(df) == 3
-    assert df.columns.shape[0] == 5
-    assert df.columns[0] == 'c_0'
-    assert df.columns[1] == 'c_1'
+def generate_data_symptoms_diagnosis(seed, N):
+    """Generate data with a noisy-or net. The net is comprised of one child
+    (the diagnosis) and N_SYMPTOMS parents (the symptomns). The prior for
+    symptoms to be 'on' is the same for all symptoms. By fixing this prior, we
+    can determine the order of questions that should be selected through a
+    single parameter in the data generator (the leak parameter).
+    """
+    prng = RandomState(seed)
+    def sample_binary(p):
+        return prng.uniform(0 , 1) < p
 
+    # Get symptoms.
+    def get_col_name(index):
+        return 'c_' + str(index)
+    data = {
+        get_col_name(symptom) : [sample_binary(0.5) for _ in range(N)]
+        for symptom in range(N_SYMPTOMS)
+    }
+    leak_p_symptoms = np.linspace(0.01, 0.49, N_SYMPTOMS)
+    data['target'] = []
 
+    for row in range(N):
+        leak = LEAK_P_SPONTANEOUS
+        for symptom in range(N_SYMPTOMS):
+            if data[get_col_name(symptom)][row]:
+                leak *=  leak_p_symptoms[symptom]
+        data['target'].append(sample_binary(1-leak))
 
+    pd.DataFrame(data).to_csv(
+        'tests/data/noisy_or_symptoms_diagnosis_n=%d_seed=%d.csv' % (N, seed),
+        index=False
+    )
+    return data
+
+def generate_data_mix_causal_directions(seed, N):
+    """Generate data with a noisy-or net. 3 Nodes are parents to the target and
+    3 nodes are children of the target.
+    """
+    prng = RandomState(seed)
+    def sample_binary(p):
+        return prng.uniform(0 , 1) < p
+
+    # Get symptoms.
+    def get_col_name(index):
+        return 'c_' + str(index)
+
+    # Leaks for links from columns 0, 1, and 2 to target.
+    target_parent_leaks = [0.01, 0.1, 0.2]
+    # Leaks for links from target to columns 3, 4, and 5.
+    target_children_leaks = [0.02, 0.15, 0.25]
+
+    # Sample the columns which are parents to the target.
+    data = {
+        get_col_name(symptom) : [sample_binary(0.5) for _ in range(N)]
+        for symptom in range(len(target_parent_leaks))
+    }
+
+    # Sample the target.
+    data['target'] = []
+    for row in range(N):
+        leak = LEAK_P_SPONTANEOUS
+        for symptom in range(len(target_parent_leaks)):
+            if data[get_col_name(symptom)][row]:
+                leak *=  target_parent_leaks[symptom]
+        data['target'].append(sample_binary(1-leak))
+
+    # Sample the children of the target.
+    child_indeces = range(
+        len(target_parent_leaks),
+        len(target_parent_leaks) + len(target_children_leaks)
+    )
+    for child in child_indeces:
+        data['c_' + str(child)] = [
+            sample_binary(
+                1 - target_children_leaks[child-len(target_parent_leaks)] * LEAK_P_SPONTANEOUS
+            )
+            if target_value else
+            sample_binary(1 - LEAK_P_SPONTANEOUS)
+            for target_value in data['target']
+        ]
+
+    # Save and return data.
+    pd.DataFrame(data).to_csv(
+        'tests/data/noisy_or_causal_mix_n=%d_seed=%d.csv' % (N, seed),
+        index=False
+    )
+    return data
 
 BQL_STR = '''
 CREATE TABLE "temp" AS
@@ -214,7 +296,7 @@ def prep_bdb(experimental_config):
     bdb.metamodels['cgpm'].set_multiprocess(False)
     bdb.execute('''
         CREATE TABLE data_table
-            FROM 'tests/data/noisy_or_n={number_datapoints}_seed={seed}.csv';
+            FROM 'tests/data/noisy_or_{data_generator_name}_n={number_datapoints}_seed={seed}.csv';
     '''.format(**experimental_config))
     bdb.execute('''
         CREATE POPULATION pop FOR data_table WITH SCHEMA(
@@ -236,20 +318,43 @@ SHORTENING_FUNCTIONS = {
     'cond_entropy' : shorten_conditional_entropy,
     'cmi' : shorten_conditional_mutual_information,
 }
-NUMBER_MC_SAMPLES = [10, 100]
-MINUTES_ANALYSIS = [60, 240]
-DIAGNOSIS = {
-    'autism': "Autism Spectrum Disorder",
-    'adhd': "Attention-Deficit/Hyperactivity Disorder"
+DATA_GENERATORS = {
+    'disease_symptoms'   : generate_data_disease_symptoms,
+    'symptoms_diagnosis' : generate_data_symptoms_diagnosis,
+    'causal_mix'        : generate_data_mix_causal_directions,
 }
 
+@pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
+def test_data_gen_smoke(data_generator_name):
+    """Smoke test data generation.
+
+    This test assess only whether the shape of the data generated is correct.
+    """
+    data = DATA_GENERATORS[data_generator_name](1, 3)
+    df = pd.read_csv(
+        'tests/data/noisy_or_%s_n=3_seed=1.csv' % (data_generator_name,)
+    )
+
+    assert df.equals(pd.DataFrame(data))
+    assert len(df) == 3
+    if data_generator_name == 'causal_mix':
+        assert df.columns.shape[0] == 7
+    else:
+        assert df.columns.shape[0] == 5
+    assert df.columns[0] == 'c_0'
+    assert df.columns[1] == 'c_1'
+
+NUMBER_MC_SAMPLES = [1]
+
 @pytest.mark.parametrize('shortening_function_name', SHORTENING_FUNCTIONS)
-@pytest.mark.parametrize('number_mc_samples', [1])
-@pytest.mark.parametrize('number_datapoints', [1])
+@pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
+@pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
+@pytest.mark.parametrize('number_datapoints', [1] )
 @pytest.mark.parametrize('number_iterations', [1])
 @pytest.mark.parametrize('seed', range(1, 2))
 def test_noisy_or(
         shortening_function_name,
+        data_generator_name,
         number_mc_samples,
         number_datapoints,
         number_iterations,
@@ -258,11 +363,12 @@ def test_noisy_or(
 
     experimental_config = {
         'shortening_function_name' : shortening_function_name,
+        'data_generator_name' : data_generator_name,
         'number_mc_samples' : str(number_mc_samples),
         'number_datapoints' : str(number_datapoints),
         'number_iterations' : str(number_iterations),
         'seed'              : seed,
-        'column_names'      : generate_data_disease(
+        'column_names'      : DATA_GENERATORS[data_generator_name](
             seed, number_datapoints
         ).keys()
     }
