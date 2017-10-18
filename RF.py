@@ -81,6 +81,27 @@ def load(num):
     return df_tr, df_te
 
 
+def get_stats(predictions, targets):
+
+    correct = 0
+    false_p = 0
+    false_n = 0
+
+    for num in range(len(predictions)):
+        if predictions[num] == targets[num]:
+            correct += 1
+        elif predictions[num] == 1 and targets[num] == 0:
+            false_p += 1
+        elif predictions[num] == 0 and targets[num] == 1:
+            false_n += 1
+
+    correct /= len(predictions)
+    false_p /= len(predictions)
+    false_n /= len(predictions)
+
+    return correct, false_p, false_n
+
+
 def RF(df_tr, df_te, Dx, iters):
 
     train_targets = list(df_tr[Dx])
@@ -90,6 +111,9 @@ def RF(df_tr, df_te, Dx, iters):
 
     f1_list = []
     acc_list = []
+    correct_list = []
+    false_n_list = []
+    false_p_list = []
     feature_dict = {}
     iteration = 0
 
@@ -103,6 +127,13 @@ def RF(df_tr, df_te, Dx, iters):
 
         # print(f1_score(test_targets, predictions, average='weighted'), accuracy_score(test_targets, predictions))
 
+        [correct, false_p, false_n] = get_stats(list(predictions), test_targets)
+        print([correct, false_p, false_n])
+
+        correct_list.append(correct)
+        false_p_list.append(false_p)
+        false_n_list.append(false_n)
+
         f1_list.append(f1_score(test_targets, predictions, average='weighted'))
         acc_list.append(accuracy_score(test_targets, predictions))
 
@@ -114,16 +145,20 @@ def RF(df_tr, df_te, Dx, iters):
             if float(importance) > float(5/train_feat.shape[1]):
                 threshold_features.append((question, importance))
 
-        (questions, importances) = zip(*threshold_features)
-        questions = list(questions)
-        importances = np.array(importances)
-        indices = np.argsort(importances)[::-1]
+        print(threshold_features)
 
-        for num in range(len(questions)):
-            if str(questions[num]) in feature_dict.keys():
-                feature_dict[str(questions[num])] = int(feature_dict[str(questions[num])]) + 1
-            else:
-                feature_dict[questions[num]] = 1
+        if len(threshold_features) > 0:
+
+            (questions, importances) = zip(*threshold_features)
+            questions = list(questions)
+            importances = np.array(importances)
+            indices = np.argsort(importances)[::-1]
+
+            for num in range(len(questions)):
+                if str(questions[num]) in feature_dict.keys():
+                    feature_dict[str(questions[num])] = int(feature_dict[str(questions[num])]) + 1
+                else:
+                    feature_dict[questions[num]] = 1
 
         iteration += 1
         print('Iteration # ' + str(iteration))
@@ -138,13 +173,14 @@ def RF(df_tr, df_te, Dx, iters):
             plt.axhline(y=float(5/train_feat.shape[1]), color='r', linestyle='--')
             plt.show()
 
-    print(feature_dict)
-
     top_feat = sorted(feature_dict.items(), key=lambda attrib: attrib[1], reverse=True)
 
     print(top_feat)
-    print(np.array(f1_list).mean())
-    print(np.array(acc_list).mean())
+    # print(np.array(f1_list).mean())
+    # print(np.array(acc_list).mean())
+    print(np.array(correct_list).mean())
+    print(np.array(false_p_list).mean())
+    print(np.array(false_n_list).mean())
 
 
 def OneVsRF():
@@ -233,6 +269,6 @@ def OneVsRF():
 
 if __name__ == '__main__':
 
-    [df_tr, df_te] = load(1)
+    [df_tr, df_te] = load(3)
     iters = 1000
-    RF(df_tr, df_te, 'asd', iters)
+    RF(df_tr, df_te, 'adhd', iters)
