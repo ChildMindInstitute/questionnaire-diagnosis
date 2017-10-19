@@ -119,7 +119,7 @@ def RF(df_tr, df_te, Dx, iters):
 
     for num in range(iters):
 
-        clf = RandomForestClassifier(n_estimators=100)#(random_state=0)
+        clf = RandomForestClassifier(n_estimators=250)#(random_state=0)
 
         clf.fit(train_feat, train_targets)
 
@@ -128,7 +128,6 @@ def RF(df_tr, df_te, Dx, iters):
         # print(f1_score(test_targets, predictions, average='weighted'), accuracy_score(test_targets, predictions))
 
         [correct, false_p, false_n] = get_stats(list(predictions), test_targets)
-        print([correct, false_p, false_n])
 
         correct_list.append(correct)
         false_p_list.append(false_p)
@@ -270,5 +269,5 @@ def OneVsRF():
 if __name__ == '__main__':
 
     [df_tr, df_te] = load(3)
-    iters = 1000
+    iters = 5000
     RF(df_tr, df_te, 'adhd', iters)
