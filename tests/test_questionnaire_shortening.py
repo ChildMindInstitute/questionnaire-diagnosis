@@ -19,6 +19,7 @@ import numpy as np
 from numpy.random import RandomState
 import matplotlib.pyplot as plt
 import os
+import operator
 import pandas as pd
 import pytest
 import struct
@@ -275,8 +276,9 @@ def prep_bdb(experimental_config):
         It reads the csv file, creates the population and runs analysis.
     """
     mkdir('tests/bdb/')
-    file_name = 'tests/bdb/test_noisy_or_mc={number_mc_samples}_n={number_datapoints}' +\
-        '_iters={number_iterations}_seed={seed}.bdb'
+    file_name = 'tests/bdb/test_noisy_or_{data_generator_name}_' +\
+        '{shortening_function_name}_mc={number_mc_samples}' +\
+        '_n={number_datapoints}_iters={number_iterations}_seed={seed}.bdb'
     bdb_file_name = file_name.format(**experimental_config)
     # XXX Great. I neither haven an idea why on earth one would make setting the
     # seed so complicated, neither do I fully understand what struct.pack is
@@ -314,10 +316,6 @@ def prep_bdb(experimental_config):
 
 DESIRED_NUMBER_OF_QUESTIONS = 3
 
-SHORTENING_FUNCTIONS = {
-    'cond_entropy' : shorten_conditional_entropy,
-    'cmi' : shorten_conditional_mutual_information,
-}
 DATA_GENERATORS = {
     'disease_symptoms'   : generate_data_disease_symptoms,
     'symptoms_diagnosis' : generate_data_symptoms_diagnosis,
@@ -344,14 +342,19 @@ def test_data_gen_smoke(data_generator_name):
     assert df.columns[0] == 'c_0'
     assert df.columns[1] == 'c_1'
 
-NUMBER_MC_SAMPLES = [1]
-
+SHORTENING_FUNCTIONS = {
+    'cond_entropy' : shorten_conditional_entropy,
+    'cmi' : shorten_conditional_mutual_information,
+}
+NUMBER_MC_SAMPLES = [100]
+NUMBER_DATAPOINTS = [500]
+NUMBER_ITERATIONS = [1000]
 @pytest.mark.parametrize('shortening_function_name', SHORTENING_FUNCTIONS)
 @pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
 @pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
-@pytest.mark.parametrize('number_datapoints', [1] )
-@pytest.mark.parametrize('number_iterations', [1])
-@pytest.mark.parametrize('seed', range(1, 2))
+@pytest.mark.parametrize('number_datapoints', NUMBER_DATAPOINTS)
+@pytest.mark.parametrize('number_iterations', NUMBER_ITERATIONS)
+@pytest.mark.parametrize('seed', range(21, 101))
 def test_noisy_or(
         shortening_function_name,
         data_generator_name,
@@ -389,9 +392,73 @@ def test_noisy_or(
          )
     )
     output_file_name = 'tests/output/noisy-or/{shortening_function_name}/' +\
-        'selected_columns_mc={number_mc_samples}' +\
+        'selected_columns_{data_generator_name}_mc={number_mc_samples}' +\
         'n={number_datapoints}_iters={number_iterations}_seed={seed}.csv'
     pd.DataFrame({'selected':selected_questions}).to_csv(
         output_file_name.format(**experimental_config),
         index=False
+    )
+
+
+@pytest.mark.parametrize('shortening_function_name', SHORTENING_FUNCTIONS)
+@pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
+@pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
+@pytest.mark.parametrize('number_datapoints', NUMBER_DATAPOINTS)
+@pytest.mark.parametrize('number_iterations', NUMBER_ITERATIONS)
+def test_get_results(
+        shortening_function_name,
+        data_generator_name,
+        number_mc_samples,
+        number_datapoints,
+        number_iterations,
+    ):
+    experimental_config = {
+        'shortening_function_name' : shortening_function_name,
+        'data_generator_name' : data_generator_name,
+        'number_mc_samples' : str(number_mc_samples),
+        'number_datapoints' : str(number_datapoints),
+        'number_iterations' : str(number_iterations),
+    }
+
+
+    pattern = 'tests/output/noisy-or/{shortening_function_name}/' +\
+        'selected_columns_{data_generator_name}_mc={number_mc_samples}' +\
+        'n={number_datapoints}_iters={number_iterations}_seed=*.csv'
+    print  ""
+
+    all_results = [
+        ', '.join(pd.read_csv(file)['selected'].values.tolist())
+        for file in glob.glob(pattern.format(**experimental_config))
+    ]
+    results = dict(
+        (ordered_selection, all_results.count(ordered_selection))
+        for ordered_selection in set(all_results)
+    )
+    print  ""
+    print  ""
+    print shortening_function_name
+    print data_generator_name
+    max_prob_order = max(results.iteritems(), key=operator.itemgetter(1))
+    print "MAP Order: %s with P(%.2f)" % (
+        max_prob_order[0], float(max_prob_order[1])/len(all_results)
+    )
+    print  ""
+    print  ""
+    print  ""
+    mkdir('tests/png/noisy-or')
+    output_plot_name = 'tests/png/noisy-or/{shortening_function_name}_' +\
+        'selected_columns_{data_generator_name}_mc={number_mc_samples}' +\
+        'n={number_datapoints}_iters={number_iterations}.png'
+
+    fig, ax = plt.subplots()
+    pd.Series(results).plot(kind='barh', ax=ax)
+    ax.set_xlabel('Frequency')
+    ax.set_ylabel('Order')
+    ax.set_title(
+        'Orders for selected by %s with data from %s' %\
+        (shortening_function_name, data_generator_name,)
+    )
+    fig.savefig(
+        output_plot_name.format(**experimental_config),
+        bbox_inches='tight'
     )
