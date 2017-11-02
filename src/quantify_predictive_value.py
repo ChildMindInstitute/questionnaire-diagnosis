@@ -114,3 +114,11 @@ def score_columns_conditional_entropy(
         n_samples=number_mc_samples,
         target = target
     )
+
+SCORING_FUNCTIONS = {
+    'cond_entropy' : score_columns_conditional_entropy,
+    'cmi' : score_columns_conditional_mutual_information,
+}
+
+def get_all_scoring_functions():
+    return SCORING_FUNCTIONS

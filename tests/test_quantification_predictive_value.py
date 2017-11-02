@@ -35,9 +35,7 @@ sys.path.append('src')
 from quantify_predictive_value import init_column_lists
 from quantify_predictive_value import select_columns
 from quantify_predictive_value import init_column_lists
-from quantify_predictive_value import score_columns_conditional_mutual_information
-from quantify_predictive_value import score_columns_conditional_entropy
-
+from quantify_predictive_value import get_all_scoring_functions
 
 LEAK_P_SPONTANEOUS = 0.95
 
@@ -231,15 +229,11 @@ def test_data_gen_smoke(data_generator_name):
     assert df.columns[0] == 'c_0'
     assert df.columns[1] == 'c_1'
 
-SCORING_FUNCTIONS = {
-    'cond_entropy' : score_columns_conditional_entropy,
-    'cmi' : score_columns_conditional_mutual_information,
-}
 NUMBER_MC_SAMPLES = [1]
 NUMBER_DATAPOINTS = [5]
 NUMBER_ITERATIONS = [1]
 @pytest.mark.parametrize('target', ['target'])
-@pytest.mark.parametrize('scoring_function_name', SCORING_FUNCTIONS)
+@pytest.mark.parametrize('scoring_function_name', get_all_scoring_functions())
 @pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
 @pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
 @pytest.mark.parametrize('number_datapoints', NUMBER_DATAPOINTS)
@@ -258,7 +252,7 @@ def test_noisy_or(
     experimental_config = {
         'target' : target,
         'scoring_function_name' : scoring_function_name,
-        'scoring_function' : SCORING_FUNCTIONS[scoring_function_name],
+        'scoring_function' : get_all_scoring_functions()[scoring_function_name],
         'data_generator_name' : data_generator_name,
         'number_mc_samples' : str(number_mc_samples),
         'number_datapoints' : str(number_datapoints),
@@ -292,7 +286,7 @@ def test_noisy_or(
 
 
 @pytest.mark.parametrize('target', ['target'])
-@pytest.mark.parametrize('scoring_function_name', SCORING_FUNCTIONS)
+@pytest.mark.parametrize('scoring_function_name', get_all_scoring_functions())
 @pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
 @pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
 @pytest.mark.parametrize('number_datapoints', NUMBER_DATAPOINTS)
@@ -308,7 +302,7 @@ def test_get_results(
     experimental_config = {
         'target' : target,
         'scoring_function_name' : scoring_function_name,
-        'scoring_function' : SCORING_FUNCTIONS[scoring_function_name],
+        'scoring_function' : get_all_scoring_functions()[scoring_function_name],
         'data_generator_name' : data_generator_name,
         'number_mc_samples' : str(number_mc_samples),
         'number_datapoints' : str(number_datapoints),
