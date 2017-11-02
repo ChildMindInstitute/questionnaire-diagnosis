@@ -32,9 +32,7 @@ from bayeslite import bayesdb_read_csv
 from testing_utils import mkdir
 
 sys.path.append('src')
-from quantify_predictive_value import init_column_lists
 from quantify_predictive_value import select_columns
-from quantify_predictive_value import init_column_lists
 from quantify_predictive_value import get_all_scoring_functions
 
 LEAK_P_SPONTANEOUS = 0.95
