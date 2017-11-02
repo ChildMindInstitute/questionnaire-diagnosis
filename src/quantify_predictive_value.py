@@ -25,7 +25,7 @@ def init_column_lists(experimental_config):
     """ Initialized lists search. """
     candidate_columns = experimental_config['column_names']
     # Remove the diagnosis from the candidates.
-    candidate_columns.remove('target')
+    candidate_columns.remove(experimental_config['target'])
     selected_columns = [] # Initialize: no columns selected yet.
     return candidate_columns, selected_columns
 
