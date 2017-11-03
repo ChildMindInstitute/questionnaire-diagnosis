@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def contingency(pred, act, var):
     """
     Function to build contingency table from
