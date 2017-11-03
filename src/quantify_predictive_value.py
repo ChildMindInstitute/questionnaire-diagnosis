@@ -89,6 +89,25 @@ def score_columns_conditional_mutual_information(
         )
 
 
+def score_columns_mutual_information(
+        bdb,
+        target,
+        next_column,
+        selected_columns,
+        number_mc_samples
+    ):
+    """Return BQL string to compute a conditional entropy score."""
+    return '''
+        ESTIMATE MUTUAL INFORMATION OF
+          ({next_column}) WITH "{target}"
+          USING {n_samples} SAMPLES AS score BY pop
+    '''.format(
+        next_column=next_column,
+        target=target,
+        n_samples=number_mc_samples,
+    )
+
+
 def score_columns_conditional_entropy(
         bdb,
         target,
@@ -115,9 +134,37 @@ def score_columns_conditional_entropy(
         target = target
     )
 
+
+def score_columns_entropy(
+        bdb,
+        target,
+        next_column,
+        selected_columns,
+        number_mc_samples
+    ):
+    """Return BQL string to compute a conditional entropy score."""
+    selected_columns_str = ','.join([
+        '"%s"' % column for column in
+        [next_column] + [target] + selected_columns
+    ])
+    return '''
+      SELECT entropy, 0 - entropy AS score FROM
+        (ESTIMATE MUTUAL INFORMATION OF
+          ({selected_columns}) WITH ({selected_columns})
+          USING {n_samples} SAMPLES AS entropy BY pop)
+    '''.format(
+        selected_columns=selected_columns_str,
+        n_samples=number_mc_samples,
+        target = target
+    )
+
+
+
 SCORING_FUNCTIONS = {
     'cond_entropy' : score_columns_conditional_entropy,
     'cmi' : score_columns_conditional_mutual_information,
+    'simple_mi' : score_columns_mutual_information,
+    'simple_entropy' : score_columns_entropy,
 }
 
 def get_all_scoring_functions():
