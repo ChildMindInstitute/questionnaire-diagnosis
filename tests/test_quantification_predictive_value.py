@@ -227,16 +227,16 @@ def test_data_gen_smoke(data_generator_name):
     assert df.columns[0] == 'c_0'
     assert df.columns[1] == 'c_1'
 
-NUMBER_MC_SAMPLES = [1]
-NUMBER_DATAPOINTS = [5]
-NUMBER_ITERATIONS = [1]
+NUMBER_MC_SAMPLES = [100]
+NUMBER_DATAPOINTS = [1000]
+NUMBER_ITERATIONS = [1000]
 @pytest.mark.parametrize('target', ['target'])
 @pytest.mark.parametrize('scoring_function_name', get_all_scoring_functions())
 @pytest.mark.parametrize('data_generator_name', DATA_GENERATORS)
 @pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
 @pytest.mark.parametrize('number_datapoints', NUMBER_DATAPOINTS)
 @pytest.mark.parametrize('number_iterations', NUMBER_ITERATIONS)
-@pytest.mark.parametrize('seed', range(1, 2))
+@pytest.mark.parametrize('seed', range(1, 101))
 def test_noisy_or(
         target,
         scoring_function_name,
