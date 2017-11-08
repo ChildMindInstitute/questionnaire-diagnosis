@@ -61,6 +61,38 @@ def lower_dimensions_index(vector, index_dict):
     return(index_dict)
 
 
+def replace_list(self, old, new, count=None):
+    """
+    Expansion of str.replace method to allow iterable of old to be replaced with the same new.
+    
+    Parameters
+    ----------
+    self : string
+        string in which to replace old with new
+    
+    old : iterable of strings
+        strings to replace with new
+        
+    new : string
+        string with which to replace strings in old
+        
+    count : int (optional)
+        If the optional argument count is given, only the first count occurrences are replaced.
+        
+    Returns
+    -------
+    self : string
+        with all strings in old replaced with new
+    """
+    if(count):
+        for oldstring in old:
+            self = self.replace(oldstring, new, count)
+    else:
+        for oldstring in old:
+            self = self.replace(oldstring, new)
+    return(self)
+
+
 def vector_vector(df):
     """
     Function to return a list of lists (vector of vectors) given a dataframe.
