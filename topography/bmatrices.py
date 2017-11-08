@@ -35,7 +35,7 @@ for k in dxes:
             )
         ].copy()
         
-bmdir = os.path.join(os.pardir, os.pardir, "boundary_matrices")
+bmdir = os.path.join(os.pardir, os.pardir, "boundary_matrices", "train")
 if not os.path.exists(bmdir):
     os.makedirs(bmdir)
     
