@@ -6,7 +6,7 @@ import numpy as np
 import os
 import pandas as pd
 
-data = os.path.join(os.pardir, os.pardir, "train_test_data", "unsplit_no_totals.csv")
+data = os.path.join(os.pardir, "train_test_data", "unsplit_no_totals.csv")
 
 df = pd.read_csv(data)
 
