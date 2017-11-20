@@ -18,47 +18,30 @@ def build_boundary_matrix(vv, max_dimensions=None):
     bmatrix : list of 2-tuples of (int, list of ints)
     """
     md = max([point for vector in vv for point in vector])
-    all_boundaries = {str([p]):(0, p) for p in range(md + 1)}
+    all_boundaries = {0 : {str([p]):p for p in range(md + 1)}}
     # all_boundaries =
     #     {
-    #         str([point_indices]) :
-    #             (
-    #                 dimension,
+    #         dimension :
+    #         {
+    #             str([point_indices]) :
     #                 boundary_element_index
-    #             )
+    #         }
     #     } ∀ points ∈ range(max(point_indices))
+    return(all_boundaries)
+
+    #TODO
     i = 1
     md = md + 1 if not max_dimensions else max_dimensions
     for v in vv:
         while (i <= md):
             for com in list(combinations(v, i + 1)):
-                subshape = list()
-                for subcom in combinations(com, len(com) - 1):
-                    for j in range(len(v)):
-                        s = list(combinations(subcom, j))
-                        print(s)
-                        print(
-                            [
-                                x if
-                                str(list(x)) not in all_boundaries else
-                                all_boundaries[str(list(x))][1] for
-                                x in
-                                s
-                            ])
-                        if len(s) and len(s[0]):
-                            for subsub in s:
-                                subsub = str(list(subsub))
-                                if subsub in all_boundaries and all_boundaries[subsub][0] == i - 1:
-                                    subshape.append(all_boundaries[subsub][1])
-                                elif subsub in all_boundaries:
-                                    pass
-                                else:
-                                    pass
-                all_boundaries[str(subshape)] = (
+                print(com)
+                all_boundaries[str(list(com))] = (
                     i,
                     len(all_boundaries)
                 )
             i = i + 1
+    # now we have a pointwise boundary matrix
     print(all_boundaries)
     bmatrix = [
         (
@@ -69,7 +52,39 @@ def build_boundary_matrix(vv, max_dimensions=None):
     return(bmatrix)
 
 
-def lower_dimensions_index(vector, index_dict, max_dimensions=None):
+def build_boundary_matrix_max_only_in_each_D(vv):
+    """
+    Function to build a boundary matrix from vector of vectors (list of lists).
+    
+    Parameter
+    ---------
+    vv : list of lists
+    
+    Returns
+    -------
+    bmatrix : list of 2-tuples of (int, list of ints)
+    """
+    all_boundaries = {
+                         str([p]):p for p in range(
+                             max([point for vector in vv for point in vector]) + 1
+                         )
+                     }
+    bmatrix = list()
+    for v in vv:
+        all_boundaries = lower_dimensions_index(v, all_boundaries)
+    for v in all_boundaries:
+        z = list()
+        for x in combinations(eval(v), len(eval(v)) - 1):
+            if len(x):
+                z.append(all_boundaries[str(list(x))])
+        if len(z):
+            bmatrix.append((len(z) - 1, z))
+        else:
+            bmatrix.append((0, []))
+    return(bmatrix)
+
+
+def lower_dimensions_index(vector, index_dict):
     """
     Function to index all lower-dimension structures needed for
     the most complex structures in a boundary matrix.
@@ -78,24 +93,42 @@ def lower_dimensions_index(vector, index_dict, max_dimensions=None):
     ----------
     vector : list
     
-    index_dict : dictionary of {vector (list): (dimension (int), index (int))} {key: value} pairs
-    
-    max_dimensions : int or None
+    index_dict : dictionary of {vector (list): index (int)} {key: value} pairs
     
     Returns
     -------
-    index_dict : dictionary of {vector (list): (dimension (int), index (int))} {key: value} pairs
+    index_dict : dictionary of {vector (list): index (int)} {key: value} pairs
     """
-    md = (len(vector) - 1) if not max_dimensions else max_dimensions
     if str(vector) in index_dict or (type(vector) == "int" and vector in index_dict):
         return(index_dict)
     else:
-        for v in list(combinations(vector, md)):
+        for v in list(combinations(vector, len(vector) - 1)):
             lv = list(v)
             if len(lv) > 1:
-                lower_dimensions_index(lv, index_dict, max_dimensions)
-    index_dict[str(vector)] = (md, len(index_dict))
+                lower_dimensions_index(lv, index_dict)
+    index_dict[str(vector)] = len(index_dict)
     return(index_dict)
+
+
+def point_up(all_boundaries, max_dimensions=None):
+    """
+    Function to convert a point-defined boundary matrix into one defined by immediately-lower-dimensional
+    components.
+    
+    Parameters
+    ----------
+    all_boundaries: dictionary
+        {
+             str([point_indices]) :
+                 (
+                     dimension,
+                     boundary_element_index
+                 )
+         } ∀ points ∈ range(max(point_indices))
+    
+    max_dimensions: int or None
+    """
+    pass
 
 
 def replace_list(self, old, new, count=None):
