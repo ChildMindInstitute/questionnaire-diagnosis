@@ -6,26 +6,29 @@ from collections import Counter
 from itertools import groupby, chain
 import collections
 
+
 def get_responses():
 
     # Load Patient DSM Data
-    filename = 'DSM_Data.xlsx'
-    sheetname = 'DSM_Data.csv'
+    filename = 'test.xlsx'
+    sheetname = 'Test'
     output = pd.ExcelFile(filename)
     df = output.parse(sheetname)
     df = pd.DataFrame(data=df)
     df = df.set_index('EID')
-    df = df.drop(['START_DATE.y', 'Study.y', 'Site.y', 'Year.y', 'Days_Baseline.y',
-                  'Season.y'], axis=1)
+    # df = df.drop(['START_DATE.y', 'Study.y', 'Site.y', 'Year.y', 'Days_Baseline.y',
+    #               'Season.y'], axis=1)
     df = df.replace('NA', np.NaN)
+    df = split_age(df)
 
     return df
+
 
 def get_Dx():
 
     # Load Patient Dx
-    filename = 'ConsensusDx.xlsx'
-    sheetname = 'ConsensusDx'
+    filename = 'ConsensusDx_2.xlsx'
+    sheetname = 'ConsensusDx_2'
     output = pd.ExcelFile(filename)
     dx = output.parse(sheetname)
     dx = pd.DataFrame(data=dx)
@@ -33,13 +36,34 @@ def get_Dx():
 
     # Retain columns that are relevant for analysis, reduce pd df size
     col_keep = []
-    for num in range(1, 8):
+    for num in range(1, 9):
         col_keep.append('DX_0' + str(num) + '_Cat')
         col_keep.append('DX_0' + str(num) + '_Sub')
+        col_keep.append('DX_0' + str(num))
         col_keep.append('DX_0' + str(num) + '_Code')
     dx = dx[col_keep]
 
     return dx
+
+
+def threshold(dx):
+
+    print(dx.DX_01.value_counts())
+    print(dx.DX_01_Sub.value_counts())
+    print(dx.DX_01_Cat.value_counts())
+    print(dx.DX_02_Cat.value_counts())
+    print(dx['DX_01_Cat'].value_counts().add(dx.DX_02_Cat.value_counts(), fill_value=0))
+
+    base = dx.DX_01_Cat.value_counts()
+
+    for num in range(2, 9):
+        mid = 'DX_0' + str(num) + '_Cat'
+        base = base.add(dx[mid].value_counts(sort=True, ascending=False), fill_value=0)
+
+    base = base.sort_values(ascending=False)
+    print(base)
+
+    return base
 
 
 def pair_diagnoses(df, dx):
@@ -51,7 +75,13 @@ def pair_diagnoses(df, dx):
     for row in range(dx.shape[0]):
         Dx_EID_list = []
         for col in range(dx.shape[1]):
-            if col % 3 == 2 and not isinstance(dx.iloc[row, col], float):
+            if col % 4 == 3 and not isinstance(dx.iloc[row, col], float):
+
+                # ICD 10 Coding = dx.iloc[row, col]
+                # DX = dx.iloc[row, col - 1]
+                # DX_Sub = dx.iloc[row, col -2]
+                # DX_Cat = dx.iloc[row, col - 3]
+
                 # For Dx with ICD 10 Code that begins with 'F'
                 if 'F' in dx.iloc[row, col]:
                     # Dx_EID_list.append(dx.iloc[row, col - 2])
@@ -110,6 +140,8 @@ def pair_diagnoses(df, dx):
 
     for row in range(df.shape[0]):
         if df.index[row] in dx.index.values:
+            print(df.index[row])
+            print(list(EID_Dx_dict[(df.index[row])]))
             df_Dx_match.loc[str(df.index[row]), 'Dx'] = list(EID_Dx_dict[(df.index[row])])
         else:
             No_EID_drop_list.append(int(row))
@@ -121,18 +153,17 @@ def pair_diagnoses(df, dx):
 
 def split_age(df):
 
-    df_young = df[df['Age'] < 8.0]
-    df_mid = df[df['Age'] < 17][df['Age'] >= 8.0]
-    df_adult = df[df['Age'] >= 17]
+    df_mid = df[df['Age'] < 17.01]
+    df_mid = df_mid[df_mid['Age'] >= 7.99]
 
     # Count frequency of each diagnosis
 
-    count_set = list(df_mid['Dx'])
-    freq = collections.defaultdict(int)
-    for x in chain.from_iterable(count_set):
-        freq[x] += 1
+    # count_set = list(df_mid['Dx'])
+    # freq = collections.defaultdict(int)
+    # for x in chain.from_iterable(count_set):
+    #     freq[x] += 1
 
-    return df_young, df_mid, df_adult
+    return df_mid
 
 
 def remove_age_q(df_mid):
@@ -141,7 +172,8 @@ def remove_age_q(df_mid):
 
     for col in df_mid:
         for item in ['ACE', 'CDI', 'ASR', 'CAARS', 'STAI', 'YFAS', 'ICU', 'CBCL',
-                     'CIS', 'SRS', 'TRF', 'WHODAS']:
+                     'CIS', 'SRS', 'TRF', 'WHODAS', 'Total', '_GD', '_SH',
+                     '_SC', '_HY', '_PN', '_SP', '_IN']:
             if item in col:
                 drop_list.append(col)
 
@@ -166,6 +198,7 @@ def feature_trim(df, param):
         param = '3'
 
     return df, param
+
 
 def replace_missing(df):
 
@@ -208,6 +241,7 @@ def anx(df):
 
     return anx_full
 
+
 def adhd(df):
 
     df['adhd'] = np.zeros(len(df)).astype('object')
@@ -224,7 +258,8 @@ def adhd(df):
 
     return adhd_full
 
-def ASD(df):
+
+def asd(df):
 
     df['asd'] = np.zeros(len(df)).astype('object')
     copy = df
@@ -245,7 +280,6 @@ def train_test(df):
 
     np.random.seed(seed=0)
     df['train'] = np.random.uniform(0, 1, len(df)) <= .80
-    print(df)
     train = df[df['train'] == True][0:round(df.shape[0]*2/5)]
     test = df[df['train'] == False][0:round(df.shape[0]/10)]
 
@@ -253,7 +287,13 @@ def train_test(df):
 
     return train, test
 
-def export(train, test, param):
+
+def export(train, test, param, replace=False):
+
+    if replace == True:
+        train = replace_missing(train)
+        test = replace_missing(test)
+        param = param + 'replaced'
 
     path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Train' + param + '.xlsx'
 
@@ -270,13 +310,13 @@ def export(train, test, param):
 if __name__ == "__main__":
     df = get_responses()
     dx = get_Dx()
+    base = threshold(dx)
     df = pair_diagnoses(df, dx)
-    [df_young, df_mid, df_adult] = split_age(df)
-    df = remove_age_q(df_mid)
-    [df, param] = feature_trim(df, 1.0)
-    # df = replace_missing(df)
-    anx_full = anx(df)
-    adhd_full = adhd(anx_full)
-    final_df = ASD(adhd_full)
-    [train, test] = train_test(final_df)
-    export(train, test, param)
+    # df_mid = split_age(df)
+    # df = remove_age_q(df_mid)
+    # [df, param] = feature_trim(df, .05)
+    # anx_full = anx(df)
+    # adhd_full = adhd(anx_full)
+    # final_df = asd(adhd_full)
+    # [train, test] = train_test(final_df)
+    # export(train, test, param, True)
