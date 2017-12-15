@@ -3,7 +3,56 @@ import numpy as np
 import pandas as pd
 
 
-def build_boundary_matrix(vv):
+def build_boundary_matrix(vv, max_dimensions=None):
+    """
+    Function to build a boundary matrix from vector of vectors (list of lists).
+    
+    Parameter
+    ---------
+    vv : list of lists
+    
+    max_dimensions : int or None
+    
+    Returns
+    -------
+    bmatrix : list of 2-tuples of (int, list of ints)
+    """
+    md = max([point for vector in vv for point in vector])
+    all_boundaries = {0 : {str([p]):p for p in range(md + 1)}}
+    # all_boundaries =
+    #     {
+    #         dimension :
+    #         {
+    #             str([point_indices]) :
+    #                 boundary_element_index
+    #         }
+    #     } ∀ points ∈ range(max(point_indices))
+    return(all_boundaries)
+
+    #TODO
+    i = 1
+    md = md + 1 if not max_dimensions else max_dimensions
+    for v in vv:
+        while (i <= md):
+            for com in list(combinations(v, i + 1)):
+                print(com)
+                all_boundaries[str(list(com))] = (
+                    i,
+                    len(all_boundaries)
+                )
+            i = i + 1
+    # now we have a pointwise boundary matrix
+    print(all_boundaries)
+    bmatrix = [
+        (
+            all_boundaries[element][0],
+            element if all_boundaries[element][0] > 0 else []
+        ) for element in all_boundaries
+    ]
+    return(bmatrix)
+
+
+def build_boundary_matrix_max_only_in_each_D(vv):
     """
     Function to build a boundary matrix from vector of vectors (list of lists).
     
@@ -59,6 +108,27 @@ def lower_dimensions_index(vector, index_dict):
                 lower_dimensions_index(lv, index_dict)
     index_dict[str(vector)] = len(index_dict)
     return(index_dict)
+
+
+def point_up(all_boundaries, max_dimensions=None):
+    """
+    Function to convert a point-defined boundary matrix into one defined by immediately-lower-dimensional
+    components.
+    
+    Parameters
+    ----------
+    all_boundaries: dictionary
+        {
+             str([point_indices]) :
+                 (
+                     dimension,
+                     boundary_element_index
+                 )
+         } ∀ points ∈ range(max(point_indices))
+    
+    max_dimensions: int or None
+    """
+    pass
 
 
 def replace_list(self, old, new, count=None):
