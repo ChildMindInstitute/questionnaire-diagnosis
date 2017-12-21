@@ -21,6 +21,9 @@ def get_responses():
     df = df.replace('NA', np.NaN)
     df = split_age(df)
 
+    print(df)
+    print(df.shape)
+
     return df
 
 
@@ -36,7 +39,7 @@ def get_Dx():
 
     # Retain columns that are relevant for analysis, reduce pd df size
     col_keep = []
-    for num in range(1, 9):
+    for num in range(1, 10):
         col_keep.append('DX_0' + str(num) + '_Cat')
         col_keep.append('DX_0' + str(num) + '_Sub')
         col_keep.append('DX_0' + str(num))
@@ -45,25 +48,34 @@ def get_Dx():
 
     return dx
 
-
 def threshold(dx):
 
-    print(dx.DX_01.value_counts())
-    print(dx.DX_01_Sub.value_counts())
-    print(dx.DX_01_Cat.value_counts())
-    print(dx.DX_02_Cat.value_counts())
-    print(dx['DX_01_Cat'].value_counts().add(dx.DX_02_Cat.value_counts(), fill_value=0))
+    # Cat, Sub, Dx contain value counts for each column with the respective label
 
-    base = dx.DX_01_Cat.value_counts()
+    print(dx.shape)
 
-    for num in range(2, 9):
-        mid = 'DX_0' + str(num) + '_Cat'
-        base = base.add(dx[mid].value_counts(sort=True, ascending=False), fill_value=0)
+    Cat = dx['DX_01_Cat'].value_counts()
+    Sub = dx['DX_01_Sub'].value_counts()
+    Dx = dx['DX_01'].value_counts()
 
-    base = base.sort_values(ascending=False)
-    print(base)
+    for num in range(2, 10):
 
-    return base
+        iter_cat = 'DX_0' + str(num) + '_Cat'
+        temp_Cat = dx[iter_cat].value_counts()
+        iter_sub = 'DX_0' + str(num) + '_Sub'
+        temp_Sub = dx[iter_sub].value_counts()
+        iter_dx = 'DX_0' + str(num)
+        temp_dx = dx[iter_dx].value_counts()
+
+        Cat = Cat.add(temp_Cat, fill_value=0)
+        Sub = Sub.add(temp_Sub, fill_value=0)
+        Dx = Dx.add(temp_dx, fill_value=0)
+
+    print(Cat)
+    print(Sub)
+    print(Dx)
+
+    return Cat, Sub, Dx
 
 
 def pair_diagnoses(df, dx):
@@ -79,52 +91,13 @@ def pair_diagnoses(df, dx):
 
                 # ICD 10 Coding = dx.iloc[row, col]
                 # DX = dx.iloc[row, col - 1]
-                # DX_Sub = dx.iloc[row, col -2]
+                # DX_Sub = dx.iloc[row, col - 2]
                 # DX_Cat = dx.iloc[row, col - 3]
 
-                # For Dx with ICD 10 Code that begins with 'F'
-                if 'F' in dx.iloc[row, col]:
-                    # Dx_EID_list.append(dx.iloc[row, col - 2])
-                    if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
-                        if str(dx.iloc[row, col - 1]) == 'nan':
-                            Dx_EID_list.append(dx.iloc[row, col - 2])
-                            code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[row, col - 1]
-                        else:
-                            Dx_EID_list.append(dx.iloc[row, col - 1])
-                    else:
-                        code_dict['F' + dx.iloc[row, col].split('F', 1)[1][:2]] = dx.iloc[
-                            row, col - 2]
-                        Dx_EID_list.append(dx.iloc[row, col - 2])
-
-                # For Dx with ICD 10 Code that begins with 'Z'
-                elif 'Z' in dx.iloc[row, col]:
-                    # Dx_EID_list.append(dx.iloc[row, col - 2])
-                    if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
-                        Dx_EID_list.append(dx.iloc[row, col - 1])
-                        code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[row, col - 1]
-                    else:
-                        code_dict['Z' + dx.iloc[row, col].split('Z', 1)[1][:2]] = dx.iloc[
-                            row, col - 2]
-                        Dx_EID_list.append(dx.iloc[row, col - 2])
-
-                # For Dx with ICD 10 Code that begins with 'G'
-                elif 'G' in dx.iloc[row, col]:
-                    # Dx_EID_list.append(dx.iloc[row, col - 2])
-                    if dx.iloc[row, col - 2] == 'Neurodevelopmental Disorders':
-                        Dx_EID_list.append(dx.iloc[row, col - 1])
-                        code_dict['G' + dx.iloc[row, col].split('G', 1)[1][:2]] = dx.iloc[row, col - 1]
-                    else:
-                        code_dict['G' + dx.iloc[row, col].split('G', 1)[1][:2]] = dx.iloc[
-                            row, col - 2]
-                        Dx_EID_list.append(dx.iloc[row, col - 2])
-
-                # For Dx that does not have an ICD 10 Code
-
-                elif 'No Diagnosis' in dx.iloc[row, col]:
-                    Dx_EID_list.append(dx.iloc[row, col - 2])
-                    code_dict[dx.index[row]] = dx.iloc[row, col - 2]
+                if dx.iloc[row, col - 3] == 'Neurodevelopmental Disorders':
+                    Dx_EID_list.append(dx.iloc[row, col - 1])
                 else:
-                    Dx_EID_list.append(dx.iloc[row, col - 2])
+                    Dx_EID_list.append(dx.iloc[row, col - 1])
 
         EID_Dx_dict[dx.index.values[row]] = set(Dx_EID_list)
 
@@ -140,8 +113,6 @@ def pair_diagnoses(df, dx):
 
     for row in range(df.shape[0]):
         if df.index[row] in dx.index.values:
-            print(df.index[row])
-            print(list(EID_Dx_dict[(df.index[row])]))
             df_Dx_match.loc[str(df.index[row]), 'Dx'] = list(EID_Dx_dict[(df.index[row])])
         else:
             No_EID_drop_list.append(int(row))
@@ -172,8 +143,14 @@ def remove_age_q(df_mid):
 
     for col in df_mid:
         for item in ['ACE', 'CDI', 'ASR', 'CAARS', 'STAI', 'YFAS', 'ICU', 'CBCL',
-                     'CIS', 'SRS', 'TRF', 'WHODAS', 'Total', '_GD', '_SH',
-                     '_SC', '_HY', '_PN', '_SP', '_IN']:
+                     'CIS', 'SRS', 'TRF', 'WHODAS', 'Total', '_GD', '_SH', '_T', '_LP',
+                     '_SC', '_HY', '_PN', '_SP', '_IN', '_PP', '_OPD', '_PM', '_ID', '_INV',
+                     'EEG', '_Raw', '_Scaled', '_Sum', '_Percentile', 'VCI', 'FRI', '_WMI', '_CP',
+                     '_AG', '_FR', '_LP', '_AD', '_WD', '_SC', '_SP', '_TP', '_RBB', '_AB', '_OP', '_Ext', '_Int',
+                     '_C', 'CELF', 'CGAS', 'CV_', 'CTOPP', 'TOWRE', 'KBIT', 'NIH5', 'NLES', 'percentile',
+                     '_scaled', '_raw', '_desc', '_composite', '_absorption', '_regulation', '_tolerance',
+                     '_Flanker', '_List', '_Pattern', '_Picture', 'appraisal', 'eeg', 'attempt', '_size', '_inion',
+                     '_ear', '_break', 'WISC', 'WIAT', '_DC', '_PD']:
             if item in col:
                 drop_list.append(col)
 
@@ -188,14 +165,10 @@ def feature_trim(df, param):
         if df[column].isnull().sum() > round(float(param) * df.shape[0], 0):
             df = df.drop(column, axis=1)
 
-    df = df.replace(np.NaN, 'NA')
-
     if param == 1.0:
         param = '1'
-    elif param == .30:
+    elif param == .20:
         param = '2'
-    elif param == .05:
-        param = '3'
 
     return df, param
 
@@ -205,25 +178,42 @@ def replace_missing(df):
     # Replace missing values with the mode of each feature
 
     mode_list = []
+    means_list = []
+
+    print('step 1')
 
     for column in df:
-        freqs = groupby(Counter(column).most_common(), lambda x: x[1])
-        modes = list(freqs)[0][0]
-        mode_list.append(modes)
+
+        try:
+            freqs = groupby(Counter(column).most_common(), lambda x: x[1])
+            modes = list(freqs)[0][0]
+            mode_list.append(modes)
+            means = df[column].mean()
+            means_list.append(means)
+
+        except:
+            continue
 
     df_copy = df
 
-    for row in range(df.shape[0]):
-        for col in range(df.shape[1]):
-            if df.iloc[row, col] == 'NA':
-                df_copy.iloc[row, col] = mode_list[col]
+    df = df.replace(np.NaN, 'NA')
+
+    print('step 2')
+
+    num_replaced = 0
 
     for row in range(df.shape[0]):
         for col in range(df.shape[1]):
             if df.iloc[row, col] == 'NA':
-                df_copy.iloc[row, col] = mode_list[col]
+                try:
+                    df_copy.iloc[row, col] = means_list[col]
+                    num_replaced += 1
+                except:
+                    continue
 
-    return df
+    print('Number replaced: ' + str(num_replaced))
+
+    return df_copy
 
 
 def anx(df):
@@ -276,12 +266,46 @@ def asd(df):
     return final_df
 
 
+def template(df):
+
+    df['Dx_of_Interest'] = np.zeros(len(df)).astype('object')
+    copy = df
+
+    # for row in range(df.shape[0]):
+    #
+    #     if 'ADHD-Combined' in str(df.iloc[row, df.shape[1]-2]):
+    #         copy.iloc[row, copy.shape[1]-1] = 0
+    #     elif 'ADHD-Inattentive' in str(df.iloc[row, df.shape[1]-2]):
+    #         copy.iloc[row, copy.shape[1]-1] = 1
+    #     elif 'ADHD-Hyperactive' in str(df.iloc[row, df.shape[1]-2]):
+    #         copy.iloc[row, copy.shape[1]-1] = 2
+    #     else:
+    #         copy.iloc[row, copy.shape[1]-1] = 'Nan'
+
+    for row in range(df.shape[0]):
+
+        if 'Impairment in Mathematics' in str(df.iloc[row, df.shape[1]-2]):
+            copy.iloc[row, copy.shape[1]-1] = 0
+        elif 'Impairment in Reading' in str(df.iloc[row, df.shape[1]-2]):
+            copy.iloc[row, copy.shape[1]-1] = 1
+        else:
+            copy.iloc[row, copy.shape[1]-1] = 'Nan'
+
+    for row in range(df.shape[0]):
+
+        if 'Autism' in str(df.iloc[row, df.shape[1]-2]):
+            copy.iloc[row, copy.shape[1]-1] = 1
+        else:
+            copy.iloc[row, copy.shape[1]-1] = 0
+
+    return copy
+
 def train_test(df):
 
     np.random.seed(seed=0)
-    df['train'] = np.random.uniform(0, 1, len(df)) <= .80
-    train = df[df['train'] == True][0:round(df.shape[0]*2/5)]
-    test = df[df['train'] == False][0:round(df.shape[0]/10)]
+    df['train'] = np.random.uniform(0, 1, len(df)) <= .90
+    train = df[df['train'] == True]
+    test = df[df['train'] == False]
 
     print(df.shape)
 
@@ -295,28 +319,30 @@ def export(train, test, param, replace=False):
         test = replace_missing(test)
         param = param + 'replaced'
 
-    path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Train' + param + '.xlsx'
+    path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/training' + param + '.xlsx'
 
     writer = pd.ExcelWriter(path)
     train.to_excel(writer, 'Train')
     writer.save()
 
-    path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Test' + param + '.xlsx'
+    path = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/testing' + param + '.xlsx'
 
     writer = pd.ExcelWriter(path)
     test.to_excel(writer, 'Test')
     writer.save()
 
+    print(train.shape)
+
 if __name__ == "__main__":
     df = get_responses()
     dx = get_Dx()
-    base = threshold(dx)
+    [Cat, Sub, Dx] = threshold(dx)
     df = pair_diagnoses(df, dx)
-    # df_mid = split_age(df)
-    # df = remove_age_q(df_mid)
-    # [df, param] = feature_trim(df, .05)
+    df = remove_age_q(df)
+    [df, param] = feature_trim(df, 1.0)
+    copy = template(df)
     # anx_full = anx(df)
     # adhd_full = adhd(anx_full)
     # final_df = asd(adhd_full)
-    # [train, test] = train_test(final_df)
-    # export(train, test, param, True)
+    [train, test] = train_test(copy)
+    export(train, test, param, True)

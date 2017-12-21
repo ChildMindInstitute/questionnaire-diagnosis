@@ -65,8 +65,8 @@ def learn():
 
 def load(num):
 
-    train = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Train' + str(num) + 'replaced.xlsx'
-    test = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/DSM_Test' + str(num) + 'replaced.xlsx'
+    train = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/ADHD_training' + str(num) + 'replaced.xlsx'
+    test = '/Users/jake.son/PycharmProjects/Dx_mvpa/Train_Test_Sets/ADHD_testing' + str(num) + 'replaced.xlsx'
 
     output = pd.ExcelFile(train)
     df_tr = output.parse('Train')
@@ -84,6 +84,7 @@ def load(num):
 def get_stats(predictions, targets):
 
     correct = 0
+    incorrect = 0
     false_p = 0
     false_n = 0
 
@@ -92,14 +93,17 @@ def get_stats(predictions, targets):
             correct += 1
         elif predictions[num] == 1 and targets[num] == 0:
             false_p += 1
+            incorrect += 1
         elif predictions[num] == 0 and targets[num] == 1:
             false_n += 1
+            incorrect += 1
 
     correct /= len(predictions)
+    incorrect /= len(predictions)
     false_p /= len(predictions)
     false_n /= len(predictions)
 
-    return correct, false_p, false_n
+    return correct, incorrect, false_p, false_n
 
 
 def RF(df_tr, df_te, Dx, iters):
@@ -112,6 +116,7 @@ def RF(df_tr, df_te, Dx, iters):
     f1_list = []
     acc_list = []
     correct_list = []
+    incorrect_list = []
     false_n_list = []
     false_p_list = []
     feature_dict = {}
@@ -119,7 +124,7 @@ def RF(df_tr, df_te, Dx, iters):
 
     for num in range(iters):
 
-        clf = RandomForestClassifier(n_estimators=250)#(random_state=0)
+        clf = RandomForestClassifier(n_estimators=500)#(random_state=0)
 
         clf.fit(train_feat, train_targets)
 
@@ -127,9 +132,10 @@ def RF(df_tr, df_te, Dx, iters):
 
         # print(f1_score(test_targets, predictions, average='weighted'), accuracy_score(test_targets, predictions))
 
-        [correct, false_p, false_n] = get_stats(list(predictions), test_targets)
+        [correct, incorrect, false_p, false_n] = get_stats(list(predictions), test_targets)
 
         correct_list.append(correct)
+        incorrect_list.append(incorrect)
         false_p_list.append(false_p)
         false_n_list.append(false_n)
 
@@ -174,12 +180,14 @@ def RF(df_tr, df_te, Dx, iters):
 
     top_feat = sorted(feature_dict.items(), key=lambda attrib: attrib[1], reverse=True)
 
+    print('Summary Statistics')
     print(top_feat)
     # print(np.array(f1_list).mean())
     # print(np.array(acc_list).mean())
-    print(np.array(correct_list).mean())
-    print(np.array(false_p_list).mean())
-    print(np.array(false_n_list).mean())
+    print('Correct: ' + str(np.array(correct_list).mean()))
+    print('Incorrect: ' + str(np.array(incorrect_list).mean()))
+    # print('False +: ' + str(np.array(false_p_list).mean()))
+    # print('False -: ' + str(np.array(false_n_list).mean()))
 
 
 def OneVsRF():
@@ -268,6 +276,6 @@ def OneVsRF():
 
 if __name__ == '__main__':
 
-    [df_tr, df_te] = load(3)
-    iters = 5000
-    RF(df_tr, df_te, 'adhd', iters)
+    [df_tr, df_te] = load(2)
+    iters = 500
+    RF(df_tr, df_te, 'Dx_of_Interest', iters)
