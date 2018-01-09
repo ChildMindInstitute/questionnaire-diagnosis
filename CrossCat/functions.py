@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 
@@ -141,3 +142,129 @@ def dependent_variables(
         ),
         index=False
     )           
+    
+    
+def mri_csv(EID, filepath):
+    """
+    Function to return a wide, single-row DataFrame that includes MRI features from a single csv.
+    
+    Parameters
+    ----------
+    EID : string
+        subject ID
+        
+    filepath : string
+        path to csv
+    
+    Returns
+    -------
+    feature_table : DataFrame
+        one row, many columns
+    """
+    filepath_components = filepath.split("/")
+    label_prefix = "_".join([
+        s.replace(
+            ".csv",
+            ""
+        ) for s in filepath_components[
+            filepath_components.index(EID)+1:
+        ]
+    ])
+    feature_table = pd.read_csv(filepath)
+    feature_table["EID"] = EID
+    ID = [i for i in list(
+        feature_table.columns
+    ) if (i.startswith("ID") or i.endswith("ID"))][0]
+    feature_table["name"] = feature_table["name"].apply(
+        lambda x: "_".join([
+            label_prefix,
+            x,
+            ""
+        ])
+    ) + ID.strip(" ") if len(ID) else feature_table["name"].apply(
+        lambda x: "_".join([
+            label_prefix,
+            x
+        ])
+    )
+    if len(ID):
+        feature_table.drop(ID, axis=1, inplace=True)
+    feature_table = feature_table.pivot(
+        index="EID",
+        columns="name"
+    )
+    feature_table.columns = [
+        '_'.join(
+            col
+        ).strip() for col in feature_table.columns.values
+    ]
+    return(feature_table)
+
+
+def mri_features(EID):
+    """
+    Function to return a wide, single-row DataFrame that includes MRI features from a participant directory.
+    
+    Parameter
+    ---------
+    EID : string
+        subject ID
+    
+    Returns
+    -------
+    feature_table : DataFrame
+        one row, many columns
+    """
+    csvs = recurse_mri(
+        os.path.join(
+            os.pardir,
+            "fMRI",
+            EID
+        )
+    )
+    feature_table = pd.DataFrame(
+        {},
+        index=["EID"]
+    )
+
+    for csv in csvs:
+        feature_table = pd.merge(
+            feature_table,
+            mri_csv(EID, csv),
+            how="outer",
+            left_index=True,
+            right_index=True
+        )
+        
+    return(feature_table.drop("EID", axis=0))
+
+
+def recurse_mri(fp):
+    """
+    Function to recurse the folders containing MRI feature csvs
+    
+    Parameter
+    ---------
+    fp : string
+        path to EID directory
+        
+    Returns
+    -------
+    ds : list
+        list of strings, paths to all csvs contained therein
+    """
+    if os.path.isdir(fp):
+        ds = []
+        for d in os.listdir(fp):
+            ds = [
+                *ds,
+                *recurse_mri(
+                    "/".join([
+                        fp,
+                        d
+                    ])
+                )
+            ]
+        return(ds)
+    else:
+        return([fp] if fp.endswith(".csv") else [])
