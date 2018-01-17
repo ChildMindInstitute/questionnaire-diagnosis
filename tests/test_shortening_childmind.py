@@ -35,12 +35,12 @@ from quantify_predictive_value import select_columns
 from quantify_predictive_value import get_all_scoring_functions
 from testing_utils import mkdir
 
-DESIRED_NUMBER_OF_QUESTIONS = 1
+DESIRED_NUMBER_OF_QUESTIONS = 10
 
-NUMBER_MC_SAMPLES = [1]
-MINUTES_ANALYSIS = [1]
+NUMBER_MC_SAMPLES = [100]
+MINUTES_ANALYSIS = [60]
 DIAGNOSIS = {
-    'autism': "Autism Spectrum Disorder",
+    #'autism': "Autism Spectrum Disorder",
     'adhd': "Attention-Deficit/Hyperactivity Disorder"
 }
 
@@ -50,7 +50,7 @@ def prep_bdb(experimental_config):
         It reads the csv file, creates the population and runs analysis.
     """
     mkdir('tests/bdb/')
-    file_name = 'tests/bdb/test_childmind_{data_generator_name}_' +\
+    file_name = 'tests/bdb/test_childmind_{target_name}_' +\
         '{scoring_function_name}_mc={number_mc_samples}' +\
         '_minutes={minutes_analysis}_seed={seed}.bdb'
     bdb_file_name = file_name.format(**experimental_config)
@@ -110,20 +110,17 @@ def prep_bdb(experimental_config):
 
     bdb.execute('CREATE ANALYSIS SCHEMA cc FOR pop WITH BASELINE crosscat;')
     bdb.execute('INITIALIZE 1 MODELS FOR cc;')
-    #bdb.execute('''
-    #    ANALYZE cc FOR {minutes_analysis} MINUTES WAIT(OPTIMIZED);
-    #'''.format(**experimental_config))
-
     bdb.execute('''
-        ANALYZE cc FOR 1 ITERATIONS WAIT(OPTIMIZED);
+        ANALYZE cc FOR {minutes_analysis} MINUTES WAIT(OPTIMIZED);
     '''.format(**experimental_config))
+
     return bdb
 
 @pytest.mark.parametrize('scoring_function_name', get_all_scoring_functions())
 @pytest.mark.parametrize('number_mc_samples', NUMBER_MC_SAMPLES)
 @pytest.mark.parametrize('minutes_analysis', MINUTES_ANALYSIS)
 @pytest.mark.parametrize('diagnosis', DIAGNOSIS.keys())
-@pytest.mark.parametrize('seed', range(1, 2))
+@pytest.mark.parametrize('seed', range(1, 11))
 def test_questionnaire_short(
         scoring_function_name,
         number_mc_samples,
@@ -133,6 +130,7 @@ def test_questionnaire_short(
     ):
     experimental_config = {
         'target' : DIAGNOSIS[diagnosis],
+        'target_name' : diagnosis,
         'scoring_function_name' : scoring_function_name,
         'scoring_function' : get_all_scoring_functions()[scoring_function_name],
         'data_generator_name' : 'childmind',
