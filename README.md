@@ -24,8 +24,10 @@ $ cd to quantify-predictive-value
 Run a smoke test on the childmind data:
 ```
 $ pytest src/quantify_predictive_value.py --path-to-config ../config-files/smoke-test-config.json
-```.
+```
+.
 Run an actual experiment:
 ```
 $ pytest src/quantify_predictive_value.py --path-to-config ../config-files/childmind-config.json --replicates 50 -n 50
-```.
+```
+.
