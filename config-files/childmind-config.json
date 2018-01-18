@@ -1,0 +1,36 @@
+{
+    "target": "Autism Spectrum Disorder",
+    "scoring_function_name": "cmi",
+    "number_iterations": 5000,
+    "number_datapoints": 1000,
+    "desired_number_of_questions": 10,
+    "number_mc_samples": 100,
+    "csv_file_path": "../resources/data/init_data.csv",
+    "nominal-columns": [
+        "Neurodevelopmental Disorders",
+        "Substance Related and Addictive Disorders",
+        "Adjustment Disorder",
+        "Feeding and Eating Disorders",
+        "SCQ_30",
+        "SCQ_01",
+        "Schizophrenia Spectrum and other Psychotic Disorders",
+        "Neurodevelopmental Disorder",
+        "Trauma and Stressor Related Disorders",
+        "Tic Disorder",
+        "Elimination Disorders",
+        "SCQ_28",
+        "Other Conditions That May Be a Focus of Clinical Attention",
+        "Bipolar and Related Disorders",
+        "Obsessive Compulsive and Related Disorders",
+        "Motor Disorder",
+        "Somatic Symptom and Related Disorders",
+        "Intellectual Disability",
+        "Sleep-Wake Disorders"
+    ],
+    "numerical-columns": [
+         "Age"
+    ],
+    "ignore-columns": [
+         "EID"
+    ]
+}
