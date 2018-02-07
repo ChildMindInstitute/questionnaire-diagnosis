@@ -1,0 +1,19 @@
+---
+title: "Questionnaire Diagnosis: mixOmics"
+output: html_notebook
+---
+
+```{r}
+library(mixOmics)
+```
+
+```{r}
+train <- read.csv("../train_test_data/training1_ASD.csv")
+X <- data.matrix(train[, -which(names(train) %in% c("EID", "ADHD.subtype"))])
+Y <- as.matrix(do.call(cbind, lapply(train["ASD"], factor)))
+```
+
+```{r}
+mixOmics(X, Y, ncomp=7)
+```
+
