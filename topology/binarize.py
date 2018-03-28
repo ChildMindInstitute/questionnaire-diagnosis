@@ -1,9 +1,40 @@
+import numpy as np
 import pandas as pd
 import random
 
 
-def binarize(data, target_columns=['target']):
+def binarize(data, target_columns=[]):
     """
+    Function to binarize a dataframe based on truthy values of contents, so
+    strings with at least one character and nonzero numeric values become
+    1s while zeros, empty strings and empty cells become 0s, ignoring 'target'
+    columns.
+    
+    Parameters
+    ----------
+    data : DataFrame
+    
+    target_columns : list of strings
+        each string is a column label for a column to keep to the right.
+        
+    Returns
+    -------
+    new_data : DataFrame
+    
+    Example
+    -------
+    >>> import pandas as pd
+    >>> import random
+    >>> data = pd.DataFrame({
+    ...     "Iron Man": [2008, 2010, 2013, None],
+    ...     "Hulk": [2008, None, None, None],
+    ...     "Thor": [2011, 2013, 2017, None],
+    ...     "Captain America": [2011, 2014, 2016, None],
+    ...     "Avengers": [2012, 2015, 2018, 2019]
+    ... }).T
+    >>> data["count"] = data.apply(lambda x: x.count(), axis=1)
+    >>> list(binarize(data, ["count"]).loc["Captain America", :])
+    [1, 1, 1, 0, 3]
     """
     new_data = data[
         [
@@ -11,7 +42,14 @@ def binarize(data, target_columns=['target']):
             col not in target_columns
         ]
     ].copy().applymap(
-        lambda x: 1 if x else 0
+        lambda x: 1 if (
+            x and not (
+                isinstance(
+                    x,
+                    float
+                ) and np.isnan(x)
+            )
+        ) else 0
     )
     return(
         pd.concat(
@@ -24,7 +62,7 @@ def binarize(data, target_columns=['target']):
     )
 
 
-def shuffle_dataframe_remove_labels(data, target_columns=['target']):
+def shuffle_dataframe_remove_labels(data, target_columns=[]):
     """
     Function to remove index and column labels and shuffle both axes,
     putting target columns on the far right.
