@@ -1,0 +1,35 @@
+# Ignore the resource directory because it contains the raw data.
+resources/
+
+# Ignore temporary files
+.ipynb_checkpoints/
+*temp*.py
+*temp*.ipynb
+
+# Ignore things for the messy process that is versioning with jupyter.
+old-notebooks/
+*WIP*.ipynb
+*WIP.ipynb
+# Also ignore dated checkpoints.
+*2017*.ipynb
+*2018*.ipynb
+
+# Temp (to be removed after submodules are configured)
+modules/
+
+# Ignore test output files:
+tests/bdb/
+tests/data/
+tests/output/
+tests/png/
+
+# Ingore linux artifacts
+.fuse_hidden*
+
+# Ignore vim swap files
+*.swp
+
+# Ingore python build artifacts
+*.pyc
+.cache/
+*/__pychache__/
