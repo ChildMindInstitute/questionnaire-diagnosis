@@ -1,0 +1,3 @@
+[submodule "quantify-predictive-value"]
+	path = quantify-predictive-value
+	url = https://github.com/probcomp/quantify-predictive-value
