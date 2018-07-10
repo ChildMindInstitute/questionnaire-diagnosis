@@ -1,0 +1,23 @@
+_data/*
+CrossCat/data/*
+# Ignore vim swap files.
+*.swp
+# Python artefacts
+*.ipynb_checkpoints
+*.pyc
+*.pytest_cache
+# Ignore loom files.
+loom-files*/
+childmind/loom*
+# Ignore data files.
+*.csv
+*.bdb
+temp*
+train_test_data
+data
+childmind/resources
+# Ignore files that were deleted but are supposingly still open somewhere
+.fuse_hidden*
+
+# Ignore Git artefacts
+*.orig
