@@ -1,0 +1,3 @@
+[submodule "childmind"]
+	path = childmind
+	url = git@github.com:probcomp/childmind.git
